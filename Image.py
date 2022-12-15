@@ -1,4 +1,5 @@
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -58,18 +59,16 @@ class Image:
 
             rectangles = [[cnt[0] - 7, cnt[1] - 7] for cnt in cen_sorted]
             return rectangles
-
+        # Coordinates: 1 - horizontal min, 2 - vertical min, 3 - horizontal max, 4 - vertical max
         y1, x1, y2, x2 = coordinates
 
         crop_img = self.image[min(x1, x2):max(x1, x2), min(y1, y2):max(y1, y2)]
-        if x1 > x2 and y1 > y2:
-            mod = 'lb'  # lb
-        if x1 < x2 and y1 > y2:
-            mod = 'rt'  # rt
-        if x1 < x2 and y1 < y2:
-            mod = 'lt'  # lt
-        if x1 > x2 and y1 < y2:
-            mod = 'rb'  # rb
+        # if x1 > x2 and y1 > y2:
+        #     mod = 'lb'  # lb
+        #
+        #     mod = 'lt'  # lt
+        # if x1 > x2 and y1 < y2:
+        #     mod = 'rb'  # rb
 
         #   Сохраняем исходные размерности изображения
         width, height = crop_img.shape[:2]
@@ -98,51 +97,25 @@ class Image:
                 centers.append(cnt.mean(axis=0))
 
         #   Масштабируем координаты
-        centers = np.array(centers, dtype='int16').reshape(-1, 2)
+        centers = np.array(centers).reshape(-1, 2)
         centers[:, 0] = (centers[:, 0] * ky).astype('int32') + min(y1, y2)
         centers[:, 1] = (centers[:, 1] * kx).astype('int32') + min(x1, x2)
 
-        #   Мод = 'rt'
-        if mod == "rt":
+          # Мод = 'rb'
+        if x1 > x2 and y1 > y2:
             cen_sorted = sorted(
-                centers[centers[:, 0] > 128], key=lambda x: x[1]
+                centers[centers[:, 0] > width + min(y1, y2)], key=lambda x: x[1], reverse=True
             ) + sorted(
-                centers[centers[:, 0] < 128], key=lambda x: x[1], reverse=True
+                centers[centers[:, 0] < width + min(y1, y2)], key=lambda x: x[1],
             )
-
-            return dumping_json(cen_sorted=np.array(cen_sorted))
-
-        #   Мод = 'rb'
-        if mod == "rb":
-            cen_sorted = sorted(
-                centers[centers[:, 0] > 128], key=lambda x: x[1], reverse=True
-            ) + sorted(
-                centers[centers[:, 0] < 128], key=lambda x: x[1],
-            )
-
             return dumping_json(cen_sorted=np.array(cen_sorted))
 
         #   Мод = 'lt'
-        if mod == "lt":
+        if x1 < x2 and y1 < y2:
             cen_sorted = sorted(
-                centers[centers[:, 0] < 128], key=lambda x: x[1], reverse=True
+                centers[centers[:, 0] < width + min(y1, y2)], key=lambda x: x[1]
             ) + sorted(
-                centers[centers[:, 0] > 128], key=lambda x: x[1],
+                centers[centers[:, 0] > width + min(y1, y2)], key=lambda x: x[1], reverse=True
             )
-
             return dumping_json(cen_sorted=np.array(cen_sorted))
 
-        #   Мод = 'lb'
-        if mod == "lb":
-            cen_sorted = sorted(
-                centers[centers[:, 0] < 128], key=lambda x: x[1],
-            ) + sorted(
-                centers[centers[:, 0] > 128], key=lambda x: x[1], reverse=True
-            )
-
-            return dumping_json(cen_sorted=np.array(cen_sorted))
-
-
-# if __name__ == '__main__':
-#     img = Image('data/IMG_000126.JPG')
-#     img.pins2json((1724, 1165, 1995, 1490))

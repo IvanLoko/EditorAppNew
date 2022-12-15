@@ -1,5 +1,6 @@
 from time import sleep
 
+import matplotlib.pyplot as plt
 from PyQt5 import QtCore
 from PyQt5.QtCore import QRect, QMimeData, Qt
 from PyQt5.QtGui import QPainter
@@ -112,7 +113,6 @@ class Label(QLabel):
             self.parent().to_points_elements(self.points)
             self.parent().to_points_dots(dots)
             self.parent().next_item()
-
 
     def paintEvent(self, event):
         super(Label, self).paintEvent(event)
