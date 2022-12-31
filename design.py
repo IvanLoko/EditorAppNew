@@ -16,7 +16,7 @@ from qtpy import QtGui
 from decoder import lazyDecoder
 import json
 
-from Image import Image
+from canvas import Canvas
 from centralLabel import Label
 from model import build_model
 
@@ -42,9 +42,10 @@ class centralWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self.images_list = []
-        self.dict = {}
-        self.list_widgets = QListWidget()
+        self.dict = None
+        self.elements_list = QListWidget()
+        self.label_list_widget = QListWidget()
+        self.ranks = None
         self.create_list()
 
         self.pushButton = QtWidgets.QPushButton(self)
@@ -67,20 +68,14 @@ class centralWidget(QtWidgets.QWidget):
         self.info_line = QLabel('Hellow!', parent=self)
         self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
         self.info_line.setAlignment(QtCore.Qt.AlignCenter)
-        # Убрать в дальнейшем
-        self.cen_label = Label(images_list=self.images_list, parent=self)
-        self.cen_label.setObjectName("cen_label")
-        self.cen_label.setGeometry(140, 100, 1200, 800)
-        self.cen_label.setStyleSheet(
-            "#cen_label {background-color: rgb(100,120,100);}"
-        )
 
         self.pushButton.clicked.connect(self.on_clicked_2)
         self.pushButton_2.clicked.connect(self.load_project)
-        self.pushButton_3.clicked.connect(self.on_clicked_3)
+        # self.pushButton_3.clicked.connect(self.on_clicked_3)
         self.pushButton_4.clicked.connect(self.rewrite)
 
-        self.list_widgets.clicked.connect(self.item_clicked)
+        self.elements_list.clicked.connect(self.elements_list_clicked)
+        self.label_list_widget.clicked.connect(self.label_list_clicked)
 
     def load_project(self):
 
@@ -97,57 +92,84 @@ class centralWidget(QtWidgets.QWidget):
                 message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                 answer = message.exec_()
                 if answer == QMessageBox.Yes:
-                    dirlist, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Выбрать папку",
-                                                                       dirlist + '/Контрольные точки/')
-                    if dirlist:
-                        with open(dirlist, 'r') as ff:
+                    dirlist_points, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Выбрать папку",
+                                                                              dirlist + '/Контрольные точки/')
+                    if dirlist_points:
+                        with open(dirlist_points, 'r') as ff:
                             self.dict = json.loads(ff.read(), strict=False)
-                elif answer == QMessageBox.No or answer == QMessageBox.Close:
+                elif answer in (QMessageBox.No, QMessageBox.Close):
                     return
 
             if self.dict:
-                self.list_widgets.clear()
+                self.elements_list.clear()
                 for el in self.dict['Elements'].keys():
-                    self.list_widgets.addItem(QListWidgetItem(el))
-                self.list_widgets.setCurrentRow(0)
+                    self.elements_list.addItem(QListWidgetItem(el))
+                self.elements_list.setCurrentRow(0)
 
-            self.info_line.setText(f'Elements loaded from {dirlist}')
+            self.label_list_widget.clear()
+            for file in glob.glob(dirlist + r'\Виды\*'):
+                self.label_list_widget.addItem(QListWidgetItem(file.split('\\')[-1]))
+                self.create_label(file)
+            self.label_list_widget.setCurrentRow(0)
+            self.label_list_clicked()
 
-            # for file in glob.glob(dirlist + r'\Виды\*'):
+            projects = glob.glob(dirlist + r'\*.prj')
+            if len(projects) != 1:
+                dirlist_project, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Выбрать проект", dirlist + "/")
+                with open(dirlist_project, 'r') as ff:
+                    f = ff.read()
+                    indexes_dict = json.loads(f.replace('\\', '\\\\'), strict=False)
+                    self.ranks = {name: item['Rank'] for name, item in indexes_dict['Items']['0']['Items'].items()}
+            else:
+                with open(projects[0], 'r') as ff:
+                    f = ff.read()
+                    indexes_dict = json.loads(f.replace('\\', '\\\\'), strict=False)
+                    self.ranks = {name: item['Rank'] for name, item in indexes_dict['Items']['0']['Items'].items()}
 
-
+            self.info_line.setText(f'Elements & images loaded from {dirlist}')
+        else:
+            self.info_line.setText('Project are not loaded')
 
     def next_item(self):
-        self.list_widgets.setCurrentRow(self.list_widgets.currentRow() + 1)
+        self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
 
-    def item_clicked(self):
-        print(f'item clicked {self.list_widgets.currentItem().text()}')
+    def elements_list_clicked(self):
+        print(f'item clicked {self.elements_list.currentItem().text()}')
+
+    def label_list_clicked(self):
+        item = self.label_list_widget.currentItem().text()
+        self.findChild(Label, item).show()
+        for element in self.findChildren(Label):
+            if element.objectName() != item:
+                element.hide()
+            else:
+                element.show()
 
     def to_points_elements(self, points: list):
-        element = self.list_widgets.currentItem().text()
-        self.dict['Elements'][element]['Views']['0'] = \
+        element = self.elements_list.currentItem().text()
+        self.dict['Elements'][element]['Views'][self.ranks[self.label_list_widget.currentItem().text()]] = \
             [{'L': int(min(points[0], points[2])) * 5,
               'T': int(min(points[1], points[3])) * 5,
               'R': int(max(points[0], points[2])) * 5,
               'B': int(max(points[1], points[3])) * 5,
-              'Section': self.list_widgets.currentItem().text()}]
-        self.info_line.setText(f'Element position {self.list_widgets.currentItem().text()} added into Points')
+              'Section': self.elements_list.currentItem().text()}]
+        self.info_line.setText(f'Element position {self.elements_list.currentItem().text()} added into Points')
 
     def to_points_dots(self, dots: list):
         for num, dot in enumerate(dots):
-            key = f'{self.list_widgets.currentItem().text()}_{num + 1}'
+            key = f'{self.elements_list.currentItem().text()}_{num + 1}'
             if key in self.dict['Dots']:
-                self.dict['Dots'][key]['Views']['0'] = \
+                self.dict['Dots'][key]['Views'][self.ranks[self.label_list_widget.currentItem().text()]] = \
                     {'L': int(dot[0] * 1.25),
                      'T': int(dot[1] * 1.25),
                      'R': int(dot[0] * 1.25 + 30),
                      'B': int(dot[1] * 1.25 + 30),
                      'Section': ''}
                 self.info_line.setText(
-                    f'Dot position {self.list_widgets.currentItem().text()}_{num + 1} added into Points')
+                    f'Dot position {self.elements_list.currentItem().text()}_{num + 1} added into Points')
             else:
                 self.info_line.setText(
-                    f'Dot position {self.list_widgets.currentItem().text()}_{num + 1} not added into Points')
+                    f'Dot position {self.elements_list.currentItem().text()}_{num + 1} not added into Points')
 
     def rewrite(self):
         dirlist = QtWidgets.QFileDialog.getExistingDirectory(None, "Выбрать папку", ".")
@@ -157,28 +179,35 @@ class centralWidget(QtWidgets.QWidget):
 
     def create_list(self):
         list_area = QWidget(self)
+        list_area.setObjectName('ListElements')
         list_area.setGeometry(QRect(1400, 100, 400, 800))
         list_area.setStyleSheet(
-            'border: 3px solid black')
+            '#ListElements {border: 3px solid black};')
         vbox = QVBoxLayout()
-        vbox.addWidget(self.list_widgets)
+        vbox.addWidget(self.elements_list)
+        vbox.addWidget(self.label_list_widget)
         list_area.setLayout(vbox)
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-
-        if event.key() == Qt.Key_Delete:
-            print(self.cen_label.objects)
-            self.cen_label.objects[self.cen_label.current_object].deleteLater()
-            del (self.cen_label.objects[self.cen_label.current_object])
+    # def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+    #
+    #     if event.key() == Qt.Key_Delete:
+    #         print(self.cen_label.objects)
+    #         self.cen_label.objects[self.cen_label.current_object].deleteLater()
+    #         del (self.cen_label.objects[self.cen_label.current_object])
 
     def on_clicked_2(self):
         self.info_line.setText(f'button pressed')
         self.cen_label.hide()
 
-    def on_clicked_3(self):
-        self.images_list.append(Image('data/IMG_000126.JPG', model=model))
-        pixmap = QPixmap(self.images_list[-1].path).scaled(1200, 800)
-        self.cen_label.setPixmap(pixmap)
+    def create_label(self, path):
+        image = Canvas(path, model=model)
+        label = Label(image=image, parent=self)
+        label.setObjectName(path.split('\\')[-1])
+        label.setGeometry(140, 100, 1200, 800)
+        label.setStyleSheet(
+            "#{cen_label} /{{background-color: rgb(100,120,100);/}}".format(cen_label=path.split('\\')[-1])
+        )
+        return label
 
 
 if __name__ == "__main__":

@@ -3,11 +3,13 @@ from time import sleep
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore
 from PyQt5.QtCore import QRect, QMimeData, Qt
-from PyQt5.QtGui import QPainter
+from PyQt5.QtGui import QPainter, QPixmap
 from PyQt5.QtWidgets import QLabel, QListWidget
 from qtpy import QtGui
 
 import numpy as np
+
+from canvas import Canvas
 
 
 class simpleRect(QLabel):
@@ -67,10 +69,12 @@ class simplePoint(QLabel):
 
 class Label(QLabel):
 
-    def __init__(self, images_list=list, parent=None, ):
+    def __init__(self, image, parent=None, ):
         super().__init__(parent=parent)
 
-        self.images_list = images_list
+        self.image = image
+        pixmap = QPixmap(self.image.path).scaled(1200, 800)
+        self.setPixmap(pixmap)
         self.objects = []
         self.current_object = None
         self.start, self.finish = QtCore.QPoint(), QtCore.QPoint()
@@ -98,6 +102,7 @@ class Label(QLabel):
 
     def mouseReleaseEvent(self, event):
         if event.button() and QtCore.Qt.LeftButton:
+
             rect = QRect(self.start, self.finish)
             painter = QPainter(self)
             painter.drawRect(rect.normalized())
@@ -108,11 +113,13 @@ class Label(QLabel):
             self.start, self.finish = QtCore.QPoint(), QtCore.QPoint()
 
             self.add_widget()
-            dots = self.images_list[-1].pins2json(self.points * 4)
+
+            dots = self.image.pins2json(self.points * 4)
             self.add_points(points=dots)
             self.parent().to_points_elements(self.points)
             self.parent().to_points_dots(dots)
             self.parent().next_item()
+
 
     def paintEvent(self, event):
         super(Label, self).paintEvent(event)

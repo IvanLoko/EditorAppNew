@@ -1,19 +1,24 @@
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image, ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-class Image:
+class Canvas:
 
     def __init__(self, path=None, model=None):
 
         self.path = path
-        self.image = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+        self.image = self.read_image(self.path)
         self.width = 4800
         self.height = 3200
         self.image = cv2.resize(self.image, (self.width, self.height))
         self.model = model
 
+    def read_image(self, path: str):
+        img = Image.open(path)
+        return np.asarray(img)
 
     def pins2json(self, coordinates: np.array):
         """Функция генерации json-файла пинов.
@@ -59,6 +64,7 @@ class Image:
 
             rectangles = [[cnt[0] - 7, cnt[1] - 7] for cnt in cen_sorted]
             return rectangles
+
         # Coordinates: 1 - horizontal min, 2 - vertical min, 3 - horizontal max, 4 - vertical max
         y1, x1, y2, x2 = coordinates
 
@@ -74,7 +80,9 @@ class Image:
         width, height = crop_img.shape[:2]
 
         #   Так как нейронная сеть работает с изображениями 256х256, изменяем размерность изображения
+        assert crop_img == None, 'Выделенная облать не корректна'
         crop_img = cv2.resize(crop_img, (256, 256)) / 255
+
 
         #   Определяем коэффициенты для корректировки итоговых координат пинов
         kx, ky = width / 256, height / 256
@@ -101,7 +109,7 @@ class Image:
         centers[:, 0] = (centers[:, 0] * ky).astype('int32') + min(y1, y2)
         centers[:, 1] = (centers[:, 1] * kx).astype('int32') + min(x1, x2)
 
-          # Мод = 'rb'
+        # Мод = 'rb'
         if x1 > x2 and y1 > y2:
             cen_sorted = sorted(
                 centers[centers[:, 0] > width + min(y1, y2)], key=lambda x: x[1], reverse=True
@@ -118,4 +126,3 @@ class Image:
                 centers[centers[:, 0] > width + min(y1, y2)], key=lambda x: x[1], reverse=True
             )
             return dumping_json(cen_sorted=np.array(cen_sorted))
-
