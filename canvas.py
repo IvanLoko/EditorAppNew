@@ -1,3 +1,5 @@
+import re
+
 import cv2
 import numpy as np
 from PIL import Image, ImageFile
@@ -11,14 +13,26 @@ class Canvas:
 
         self.path = path
         self.image = self.read_image(self.path)
+        self.index = self.get_index()
         self.width = 4800
         self.height = 3200
+        self.kx_label = self.image.shape[1] / 1200
+        self.ky_label = self.image.shape[0] / 800
         self.image = cv2.resize(self.image, (self.width, self.height))
         self.model = model
 
-    def read_image(self, path: str):
+    @staticmethod
+    def read_image(path: str):
         img = Image.open(path)
         return np.asarray(img)
+
+    def get_index(self):
+
+        with open(self.path, 'rb') as f:
+            image_bytes = bytearray(f.read())
+        indexes = int(re.findall('{"ID" : (\d+)}', str(image_bytes))[-1])
+        del image_bytes
+        return indexes
 
     def pins2json(self, coordinates: np.array):
         """Функция генерации json-файла пинов.
@@ -44,26 +58,30 @@ class Canvas:
         lt - левому верхнему
         lb - левому нижнему"""
 
-        def dumping_json(cen_sorted: np.array):
+        def dumping_json(centers_sorted: np.array):
             """Функция создания 'квадратов' для обозначения пинов на фото
             и последущая упаковка координат углов в json-файл"""
 
             # Получаем центральную координату y для микросхемы для выравнивания меток пинов по вертикали
-            mean_val = abs(y1 - y2) / 2 + min(y1, y2)
+            mean_val = centers_sorted[:, 0].mean()
 
-            # Получаем средние значения для координат y для левой (l_mean) части и правой (r_mean) микросхемы
-            l_mean = (cen_sorted[cen_sorted[:, 0] < mean_val][:, 0]).mean()
-            r_mean = (cen_sorted[cen_sorted[:, 0] > mean_val][:, 0]).mean()
+            # Получаем средние значения для координат x для левой (l_mean) части и правой (r_mean) микросхемы
+            l_mean = centers_sorted[:, 0][centers_sorted[:, 0] < mean_val].mean()
+            r_mean = centers_sorted[:, 0][centers_sorted[:, 0] > mean_val].mean()
 
-            # Заменяем все значения координат y на соответствующие для "выравнивания"
-            cen_sorted[:, 0][cen_sorted[:, 0] > mean_val] = int(r_mean)
-            cen_sorted[:, 0][cen_sorted[:, 0] < mean_val] = int(l_mean)
+            # Заменяем все значения координат x на соответствующие для "выравнивания"
+            centers_sorted[:, 0][centers_sorted[:, 0] > mean_val] = int(r_mean)
+            centers_sorted[:, 0][centers_sorted[:, 0] < mean_val] = int(l_mean)
 
-            # Создаем координаты правого верхнего и левого нижнего пинов путем отступа 5 px.
-            # В итоге получится квадрат со стороной 10 px
+            # Создаем координаты правого верхнего и левого нижнего пинов путем отступа 7 px.
+            # В итоге получится квадрат со стороной 14 px
 
-            rectangles = [[cnt[0] - 7, cnt[1] - 7] for cnt in cen_sorted]
+            centers_sorted_ = [[contour[0] - self.kx_label * 7, contour[1] - self.kx_label * 7] for contour in
+                               centers_sorted]
+            sorted_ = centers_sorted_
+            rectangles = sorted_
             return rectangles
+
 
         # Coordinates: 1 - horizontal min, 2 - vertical min, 3 - horizontal max, 4 - vertical max
         y1, x1, y2, x2 = coordinates
@@ -80,9 +98,7 @@ class Canvas:
         width, height = crop_img.shape[:2]
 
         #   Так как нейронная сеть работает с изображениями 256х256, изменяем размерность изображения
-        assert crop_img == None, 'Выделенная облать не корректна'
         crop_img = cv2.resize(crop_img, (256, 256)) / 255
-
 
         #   Определяем коэффициенты для корректировки итоговых координат пинов
         kx, ky = width / 256, height / 256
@@ -112,17 +128,17 @@ class Canvas:
         # Мод = 'rb'
         if x1 > x2 and y1 > y2:
             cen_sorted = sorted(
-                centers[centers[:, 0] > width + min(y1, y2)], key=lambda x: x[1], reverse=True
+                centers[centers[:, 0] > centers[:, 0].mean()], key=lambda x: x[1]
             ) + sorted(
-                centers[centers[:, 0] < width + min(y1, y2)], key=lambda x: x[1],
+                centers[centers[:, 0] < centers[:, 0].mean()], key=lambda x: x[1], reverse=True
             )
-            return dumping_json(cen_sorted=np.array(cen_sorted))
+            return dumping_json(centers_sorted=np.array(cen_sorted))
 
         #   Мод = 'lt'
         if x1 < x2 and y1 < y2:
             cen_sorted = sorted(
-                centers[centers[:, 0] < width + min(y1, y2)], key=lambda x: x[1]
+                centers[centers[:, 0] < centers[:, 0].mean()], key=lambda x: x[1]
             ) + sorted(
-                centers[centers[:, 0] > width + min(y1, y2)], key=lambda x: x[1], reverse=True
+                centers[centers[:, 0] > centers[:, 0].mean()], key=lambda x: x[1], reverse=True
             )
-            return dumping_json(cen_sorted=np.array(cen_sorted))
+            return dumping_json(centers_sorted=np.array(cen_sorted))
