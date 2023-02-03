@@ -1,11 +1,13 @@
+import cv2
 from PyQt5 import QtCore
-from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QPainter, QPixmap
+from PyQt5.QtCore import QRect, Qt
+from PyQt5.QtGui import QPainter, QPixmap, QBrush, QPen, QColor
 from PyQt5.QtWidgets import QLabel
 
 from SimpleObjects import SimpleRect, SimplePoint
 
 import numpy as np
+from errors import *
 
 
 class Label(QLabel):
@@ -39,6 +41,9 @@ class Label(QLabel):
             self.update()
 
     def mouseMoveEvent(self, event):
+        painter = QPainter(self)
+        painter.setBrush(QBrush(Qt.black, Qt.DiagCrossPattern).setA)
+
         if event.buttons() and QtCore.Qt.LeftButton:
             self.finish = event.pos()
             self.borderCheck()
@@ -46,27 +51,48 @@ class Label(QLabel):
 
     def mouseReleaseEvent(self, event):
         if event.button() and QtCore.Qt.LeftButton:
-            rect = QRect(self.start, self.finish)
-            painter = QPainter(self)
-            painter.drawRect(rect.normalized())
             self.points = np.array([self.start.x(),
                                     self.start.y(),
                                     self.finish.x(),
                                     self.finish.y()])
+            if self.start == self.finish:
+                return
             self.start, self.finish = QtCore.QPoint(), QtCore.QPoint()
+            try:
+                dots = self.image.pins2json(self.points * 4)
+                self.parent().next_item()
+                self.add_widget()
+                self.add_points(points=dots)
+            except NonePointError:
+                self.parent().set_line('There is no points in area', 'rgb(237, 28, 36)')
+            except cv2.error:
+                self.parent().set_line('Incorrect area', 'rgb(237, 28, 36)')
+            except IndexError:
+                self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
+            except AttributeError:
+                self.parent().set_line('Set element in element list', 'rgb(237, 28, 36)')
 
-            self.add_widget()
-
-            dots = self.image.pins2json(self.points * 4)
-            self.add_points(points=dots)
-            self.parent().next_item()
+    def borderCheck(self):
+        if self.finish.x() < 1:
+            self.finish.setX(1)
+        elif self.finish.x() > self.width() - 3:
+            self.finish.setX(self.width() - 3)
+        if self.finish.y() < 1:
+            self.finish.setY(1)
+        elif self.finish.y() > self.height() - 3:
+            self.finish.setY(self.height() - 3)
 
     def paintEvent(self, event):
         super(Label, self).paintEvent(event)
         painter = QPainter(self)
+        color = QColor()
+        color.setRgb(100, 100, 100)
+        painter.setPen(QPen(Qt.black, Qt.SolidLine, ))
+        painter.setBrush(QBrush(color, Qt.DiagCrossPattern))
         if not self.start.isNull() and not self.finish.isNull():
             rect = QRect(self.start, self.finish)
             painter.drawRect(rect.normalized())
+
 
     def dragEnterEvent(self, e):
         e.accept()
@@ -82,12 +108,4 @@ class Label(QLabel):
     def call(self, child_class=None):
         self.current_object = self.objects.index(child_class)
 
-    def borderCheck(self):
-        if self.finish.x() < 1:
-            self.finish.setX(1)
-        elif self.finish.x() > self.width() - 3:
-            self.finish.setX(self.width() - 3)
-        if self.finish.y() < 1:
-            self.finish.setY(1)
-        elif self.finish.y() > self.height() - 3:
-            self.finish.setY(self.height() - 3)
+

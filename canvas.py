@@ -3,6 +3,7 @@ import re
 import cv2
 import numpy as np
 from PIL import Image, ImageFile
+from errors import NonePointError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -62,6 +63,7 @@ class Canvas:
             """Функция создания 'квадратов' для обозначения пинов на фото
             и последущая упаковка координат углов в json-файл"""
 
+            width_rectangle = int(self.ky_label * 7)
             # Получаем центральную координату y для микросхемы для выравнивания меток пинов по вертикали
             mean_val = centers_sorted[:, 0].mean()
 
@@ -70,30 +72,54 @@ class Canvas:
             r_mean = centers_sorted[:, 0][centers_sorted[:, 0] > mean_val].mean()
 
             # Заменяем все значения координат x на соответствующие для "выравнивания"
-            centers_sorted[:, 0][centers_sorted[:, 0] > mean_val] = int(r_mean)
-            centers_sorted[:, 0][centers_sorted[:, 0] < mean_val] = int(l_mean)
+            centers_sorted[:, 0][centers_sorted[:, 0] > mean_val] = r_mean
+            centers_sorted[:, 0][centers_sorted[:, 0] < mean_val] = l_mean
 
             # Создаем координаты правого верхнего и левого нижнего пинов путем отступа 7 px.
             # В итоге получится квадрат со стороной 14 px
 
-            centers_sorted_ = [[contour[0] - self.kx_label * 7, contour[1] - self.kx_label * 7] for contour in
-                               centers_sorted]
-            sorted_ = centers_sorted_
-            rectangles = sorted_
-            return rectangles
+            rectangles = np.array([[contour[0] - width_rectangle, contour[1] - width_rectangle]
+                                   for contour in centers_sorted]).astype('int16')
 
+            left = rectangles[rectangles[:, 0] < mean_val]
+            right = rectangles[rectangles[:, 0] > mean_val][::-1]
+
+            num = 0
+            if left[0, 0] > left[0, 1]:
+                while num != min(len(right), len(left)):
+                    if abs(left[num, 1] - right[num, 1]) > width_rectangle * 3.1:
+                        if left[num, 1] > right[num, 1]:
+                            left = np.insert(left, num, [left[0, 0], right[num, 1]], axis=0,)
+                            num = 0
+                        else:
+                            right = np.insert(right, num, [right[0, 0], left[num, 1]], axis=0)
+                            num = 0
+                    num += 1
+
+            while len(right) != len(left):
+                if len(right) < len(left):
+                    right = np.insert(right, -1, [right[0, 0], left[len(right), 1]], axis=0)
+                if len(right) > len(left):
+                    left = np.insert(left, -1, [left[0, 0], right[len(left), 1]], axis=0)
+
+            rectangles = np.concatenate([left, right[::-1]])
+
+            num = 1
+            while num < len(rectangles) - 1:
+                if abs(rectangles[num, 1] - rectangles[num - 1, 1]) < width_rectangle * 3.1:
+                    if rectangles[num - 1, 0] == rectangles[num, 0]:
+                        row = [rectangles[num-1, 0],
+                               int((rectangles[num, 1] + rectangles[num - 1, 1]) / 2)]
+                        rectangles = np.delete(rectangles, (num - 1, num), axis=0)
+                        rectangles = np.insert(rectangles, num-1, row, axis=0)
+                num += 1
+
+            return rectangles
 
         # Coordinates: 1 - horizontal min, 2 - vertical min, 3 - horizontal max, 4 - vertical max
         y1, x1, y2, x2 = coordinates
 
         crop_img = self.image[min(x1, x2):max(x1, x2), min(y1, y2):max(y1, y2)]
-        # if x1 > x2 and y1 > y2:
-        #     mod = 'lb'  # lb
-        #
-        #     mod = 'lt'  # lt
-        # if x1 > x2 and y1 < y2:
-        #     mod = 'rb'  # rb
-
         #   Сохраняем исходные размерности изображения
         width, height = crop_img.shape[:2]
 
@@ -106,7 +132,7 @@ class Canvas:
         #   Сегмнтируем изобраэжение
         det = self.model.predict(crop_img[None, ...])[0, ...][:, :, 1]
 
-        #   Устанавливаем пороги при которых будем считать что пиксель является пином, а не вотно
+        #   Устанавливаем пороги при которых будем считать что пиксель является пином, а не фоном
         det = np.where(det > 0.018, 255, 0)
 
         #   Находим контуры выделенных пинов
@@ -122,8 +148,12 @@ class Canvas:
 
         #   Масштабируем координаты
         centers = np.array(centers).reshape(-1, 2)
-        centers[:, 0] = (centers[:, 0] * ky).astype('int32') + min(y1, y2)
-        centers[:, 1] = (centers[:, 1] * kx).astype('int32') + min(x1, x2)
+
+        if not centers.any():
+            raise NonePointError(f'centers should be non empty list: {type(centers)}')
+
+        centers[:, 0] = ((centers[:, 0] * ky) + min(y1, y2)).astype('int32')
+        centers[:, 1] = ((centers[:, 1] * kx) + min(x1, x2)).astype('int32')
 
         # Мод = 'rb'
         if x1 > x2 and y1 > y2:
@@ -141,4 +171,7 @@ class Canvas:
             ) + sorted(
                 centers[centers[:, 0] > centers[:, 0].mean()], key=lambda x: x[1], reverse=True
             )
+            if len(cen_sorted) == 0:
+                raise NonePointError(f'cen_sorted should be non empty list, but {len(cen_sorted)}')
+
             return dumping_json(centers_sorted=np.array(cen_sorted))
