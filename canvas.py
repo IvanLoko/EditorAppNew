@@ -95,6 +95,16 @@ class Canvas:
                             right = np.insert(right, num, [right[0, 0], left[num, 1]], axis=0)
                             num = 0
                     num += 1
+            else:
+                while num != min(len(right), len(left)):
+                    if abs(left[num, 1] - right[num, 1]) > width_rectangle * 3.1:
+                        if left[num, 1] > right[num, 1]:
+                            left = np.insert(left, num, [left[0, 0], right[num, 1]], axis=0, )
+                            num = 0
+                        else:
+                            right = np.insert(right, num, [right[0, 0], left[num, 1]], axis=0)
+                            num = 0
+                    num += 1
 
             while len(right) != len(left):
                 if len(right) < len(left):

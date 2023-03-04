@@ -9,7 +9,7 @@
 
 import glob
 
-from PyQt5.QtCore import QRect
+from PyQt5.QtCore import QRect, QEvent
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
     QPushButton, QFileDialog, QApplication
@@ -57,7 +57,6 @@ class CentralWidget(QWidget):
         self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
         self.button_rewrite.setObjectName("rewrite")
         self.button_rewrite.setText('Rewrite')
-
 
         self.info_line = QLabel('Hellow!', parent=self)
         self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
@@ -166,16 +165,9 @@ class CentralWidget(QWidget):
         vbox.addWidget(self.label_list_widget)
         list_area.setLayout(vbox)
 
-    # def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-    #
-    #     if event.key() == Qt.Key_Delete:
-    #         print(self.cen_label.objects)
-    #         self.cen_label.objects[self.cen_label.current_object].deleteLater()
-    #         del (self.cen_label.objects[self.cen_label.current_object])
-
     def create_label(self, path):
         image = Canvas(path, model=model)
-        label = Label(image=image, parent=self)
+        label = Label(parent=self, image=image)
         label.setObjectName(path.split('\\')[-1])
         label.setGeometry(140, 100, 1200, 800)
         label.setStyleSheet(

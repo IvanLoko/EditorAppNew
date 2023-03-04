@@ -1,10 +1,10 @@
 import cv2
 from PyQt5 import QtCore
-from PyQt5.QtCore import QRect, Qt
+from PyQt5.QtCore import QRect, Qt, QEvent, QPoint
 from PyQt5.QtGui import QPainter, QPixmap, QBrush, QPen, QColor
 from PyQt5.QtWidgets import QLabel
 
-from SimpleObjects import SimpleRect, SimplePoint
+from SimpleObjects import SimpleRect, SimplePoint, SL
 
 import numpy as np
 from errors import *
@@ -23,6 +23,20 @@ class Label(QLabel):
         self.start, self.finish = QtCore.QPoint(), QtCore.QPoint()
         self.points = None
         self.setAcceptDrops(True)
+        self.lab = None
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Enter:
+            pos = obj.pos()
+            pos = QPoint(pos.x(), pos.y() - 20)
+            print(obj)
+            self.lab = SL(self, pos=pos, name=obj.objectName())
+            self.lab.show()
+            return True
+        if event.type() == QEvent.Leave:
+            self.lab.deleteLater()
+            self.update()
+        return False
 
     def add_widget(self):
         name = self.parent().elements_list.currentItem().text()
@@ -41,9 +55,6 @@ class Label(QLabel):
             self.update()
 
     def mouseMoveEvent(self, event):
-        painter = QPainter(self)
-        painter.setBrush(QBrush(Qt.black, Qt.DiagCrossPattern).setA)
-
         if event.buttons() and QtCore.Qt.LeftButton:
             self.finish = event.pos()
             self.borderCheck()
@@ -85,14 +96,11 @@ class Label(QLabel):
     def paintEvent(self, event):
         super(Label, self).paintEvent(event)
         painter = QPainter(self)
-        color = QColor()
-        color.setRgb(100, 100, 100)
         painter.setPen(QPen(Qt.black, Qt.SolidLine, ))
-        painter.setBrush(QBrush(color, Qt.DiagCrossPattern))
+        painter.setBrush(QBrush(Qt.black, Qt.DiagCrossPattern))
         if not self.start.isNull() and not self.finish.isNull():
             rect = QRect(self.start, self.finish)
             painter.drawRect(rect.normalized())
-
 
     def dragEnterEvent(self, e):
         e.accept()
@@ -107,5 +115,3 @@ class Label(QLabel):
 
     def call(self, child_class=None):
         self.current_object = self.objects.index(child_class)
-
-
