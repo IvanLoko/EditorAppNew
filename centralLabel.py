@@ -2,7 +2,7 @@ import cv2
 from PyQt5 import QtCore
 from PyQt5.QtCore import QRect, Qt, QEvent, QPoint
 from PyQt5.QtGui import QPainter, QPixmap, QBrush, QPen, QColor
-from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QLabel, QApplication
 
 from SimpleObjects import SimpleRect, SimplePoint, SL
 
@@ -24,6 +24,9 @@ class Label(QLabel):
         self.points = None
         self.setAcceptDrops(True)
         self.lab = None
+        self.modifiers = None
+        self.selected_objects = []
+        self.enter = None
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Enter:
@@ -48,8 +51,14 @@ class Label(QLabel):
             name = f'{self.parent().elements_list.currentItem().text()}_{num + 1}'
             self.objects.append(SimplePoint(self, point, name))
 
+    def clear_selection(self):
+        self.selected_objects = []
+        # Restore Simple objects' stylesheet
+        pass
+
     def mousePressEvent(self, event):
         if event.buttons() == QtCore.Qt.LeftButton:
+            self.modifiers = QApplication.keyboardModifiers()
             self.start = event.pos()
             self.finish = self.start
             self.update()
@@ -66,22 +75,41 @@ class Label(QLabel):
                                     self.start.y(),
                                     self.finish.x(),
                                     self.finish.y()])
+            self.clear_selection()
             if self.start == self.finish:
                 return
             self.start, self.finish = QtCore.QPoint(), QtCore.QPoint()
-            try:
-                dots = self.image.pins2json(self.points * 4)
-                self.parent().next_item()
-                self.add_widget()
-                self.add_points(points=dots)
-            except NonePointError:
-                self.parent().set_line('There is no points in area', 'rgb(237, 28, 36)')
-            except cv2.error:
-                self.parent().set_line('Incorrect area', 'rgb(237, 28, 36)')
-            except IndexError:
-                self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
-            except AttributeError:
-                self.parent().set_line('Set element in element list', 'rgb(237, 28, 36)')
+
+            if self.modifiers == Qt.ShiftModifier:
+
+                for el in self.objects:
+                    # Диапазоны горизонтальных и вертикальных сторон четырехугольника
+                    rangex = range(min(self.points[0], self.points[2]), max(self.points[0], self.points[2]))
+                    rangey = range(min(self.points[1], self.points[3]), max(self.points[1], self.points[3]))
+
+                    # Проверить, пересекается ли х,y Simple объекта с x,y зоны выделения
+                    if set(range(el.x(), el.x() + el.width())).intersection(rangex) \
+                            and set(range(el.y(), el.y() + el.height())).intersection(rangey):
+                        el.setStyleSheet('border: 3px solid black; font-size: 12pt; color: #AEE8F5;')
+                        self.selected_objects.append(el)
+
+            # Если ни одна клавиша не была нажата, выполнить разметку
+            else:
+                try:
+                    dots = self.image.pins2json(self.points * 4)
+                    self.add_widget()
+                    self.add_points(points=dots)
+                    self.parent().next_item()
+                except NonePointError:
+                    self.parent().set_line('There is no points in area', 'rgb(237, 28, 36)')
+                except cv2.error:
+                    self.parent().set_line('Incorrect area', 'rgb(237, 28, 36)')
+                except IndexError:
+                    self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
+                except TypeError:
+                    self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
+                except AttributeError:
+                    self.parent().set_line('Set element in element list', 'rgb(237, 28, 36)')
 
     def borderCheck(self):
         if self.finish.x() < 1:
@@ -104,11 +132,26 @@ class Label(QLabel):
 
     def dragEnterEvent(self, e):
         e.accept()
+        self.enter = QPoint(e.pos().x() - self.objects[self.current_object].x(),
+                            e.pos().y() - self.objects[self.current_object].y())
 
-    def dropEvent(self, e):
+    def dragMoveEvent(self, e):
 
         position = e.pos()
-        self.objects[self.current_object].move(position)
+        last_position = QPoint(self.objects[self.current_object].x() + self.enter.x(),
+                               self.objects[self.current_object].y() + self.enter.y())
+
+        # Если перенесенный элемент является выделенным, то перенести остальные выделенные элементы
+        if self.objects[self.current_object] in self.selected_objects:
+            for el in self.selected_objects:
+                el.move(position.x() + (el.x() - last_position.x()),
+                        position.y() + (el.y() - last_position.y()))
+        else:
+            self.objects[self.current_object].move(position.x() + (self.objects[self.current_object].x() - last_position.x()),
+                                                   position.y() + (self.objects[self.current_object].y() - last_position.y()))
+            self.clear_selection()
+
+    def dropEvent(self, e):
 
         e.setDropAction(QtCore.Qt.MoveAction)
         e.accept()

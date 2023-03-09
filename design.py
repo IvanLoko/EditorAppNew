@@ -9,10 +9,11 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, QEvent
+from PyQt5.QtCore import QRect, QEvent, Qt
+from PyQt5.QtGui import QColor
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication
+    QPushButton, QFileDialog, QApplication, QHBoxLayout
 import json
 
 from canvas import Canvas
@@ -95,7 +96,19 @@ class CentralWidget(QWidget):
             if self.dict:
                 self.elements_list.clear()
                 for el in self.dict['Elements'].keys():
-                    self.elements_list.addItem(QListWidgetItem(el))
+                    element = QListWidgetItem(el)
+
+                    try:
+                        item_widget, el_label, el_type = self.create_item(self.dict['Elements'][el]['Type'])
+                    except KeyError:
+                        item_widget, el_label, el_type = self.create_item()
+
+                    self.elements_list.addItem(element)
+                    self.elements_list.setItemWidget(element, item_widget)
+
+                    el_label.setFixedSize(int(item_widget.width() * 0.25), item_widget.height())
+                    el_type.setFixedSize(int(item_widget.width() * 0.75), item_widget.height())
+
                 self.elements_list.setCurrentRow(0)
 
             self.label_list_widget.clear()
@@ -110,6 +123,7 @@ class CentralWidget(QWidget):
             self.set_line('Project are not loaded')
 
     def next_item(self):
+        self.elements_list.currentItem().setBackground(QColor("#AAFFAA"))
         self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
         if self.elements_list.currentItem() is None:
             raise AttributeError
@@ -164,6 +178,37 @@ class CentralWidget(QWidget):
         vbox.addWidget(self.elements_list)
         vbox.addWidget(self.label_list_widget)
         list_area.setLayout(vbox)
+
+    def create_item(self, el_type: str = "Ошибка"):
+        item_widget = QWidget()
+        item_widget.setFixedSize(400, 22)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignLeft)
+
+        el_label = QLabel()
+        el_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        el_label.setContentsMargins(3, 0, 0, 0)
+
+        el_type_label = QLabel(el_type)
+        el_type_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        el_type_label.setContentsMargins(3, 0, 0, 0)
+
+        layout.addWidget(el_label)
+        layout.addWidget(el_type_label)
+
+        el_type_label.setStyleSheet("color: #1111BB; "
+                                    "font-size: 8pt; "
+                                    "border: 1px solid #727272; "
+                                    "border-right: 0px; "
+                                    "border-top: 0px;"
+                                    "border-bottom: 0px;")
+
+        item_widget.setLayout(layout)
+
+        return item_widget, el_label, el_type_label
 
     def create_label(self, path):
         image = Canvas(path, model=model)

@@ -9,12 +9,14 @@ class SimpleRect(QLabel):
 
     def __init__(self, parent, x_start, y_start, x_finish, y_finish, object_name: str):
         super(QLabel, self).__init__(parent)
-        self.setStyleSheet('border: 3px solid white')
+        self.setStyleSheet('border: 3px solid white; font-size: 12pt; color: #AEE8F5;')
         self.setGeometry(min(x_start, x_finish),
                          min(y_start, y_finish),
                          np.abs(x_start - x_finish),
                          np.abs(y_start - y_finish))
         self.setObjectName(object_name)
+        self.setText(object_name)
+        self.setAlignment(Qt.AlignCenter)
         self.installEventFilter(parent)
         self.show()
 
@@ -30,7 +32,7 @@ class SimpleRect(QLabel):
     def mousePressEvent(self, ev):
 
         if ev.button() == Qt.LeftButton:
-            self.setStyleSheet('border: 3px solid black')
+            self.setStyleSheet('border: 3px solid black; font-size: 12pt; color: #AEE8F5;')
 
         self.parent().call(self)
 
@@ -40,7 +42,7 @@ class SimplePoint(QLabel):
     def __init__(self, parent, geom, object_name: str):
         super(QLabel, self).__init__(parent)
         self.setStyleSheet('border: 1px solid red; background-color: rgb(100,100,100);')
-        self.setGeometry(geom[0] / 4, geom[1] / 4, 7, 7)
+        self.setGeometry(int(geom[0] / 4), int(geom[1] / 4), 7, 7)
         self.setObjectName(object_name)
         self.installEventFilter(parent)
         self.show()
