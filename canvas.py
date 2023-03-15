@@ -124,6 +124,9 @@ class Canvas:
                         rectangles = np.insert(rectangles, num-1, row, axis=0)
                 num += 1
 
+            rectangles[:, 0] = rectangles[:, 0] * self.kx_label
+            rectangles[:, 1] = rectangles[:, 1] * self.ky_label
+
             return rectangles
 
         # Coordinates: 1 - horizontal min, 2 - vertical min, 3 - horizontal max, 4 - vertical max
@@ -139,7 +142,7 @@ class Canvas:
         #   Определяем коэффициенты для корректировки итоговых координат пинов
         kx, ky = width / 256, height / 256
 
-        #   Сегмнтируем изобраэжение
+        #   Сегментируем изобраэжение
         det = self.model.predict(crop_img[None, ...])[0, ...][:, :, 1]
 
         #   Устанавливаем пороги при которых будем считать что пиксель является пином, а не фоном

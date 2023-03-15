@@ -9,17 +9,18 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, QEvent, Qt
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QRect, Qt, QObject
+from PyQt5.QtGui import QColor, QPixmap
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication, QHBoxLayout
+    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsScene, QGraphicsPixmapItem
 import json
 
 from canvas import Canvas
-from centralLabel import Label
+from centralLabel import Label, GraphicsScene
 from SimpleObjects import SimplePoint, SimpleRect
 from model import build_model
+from centralLabel import GraphicsView
 
 
 class Ui_MainWindow(QMainWindow):
@@ -45,29 +46,12 @@ class CentralWidget(QWidget):
 
         self.dict = None
         self.elements_list = QListWidget()
-        self.label_list_widget = QListWidget()
+        self.scene_list = QListWidget()
         self.create_list()
         self.dirlist = None
-
-        self.button_load = QPushButton(self)
-        self.button_load.setGeometry(QtCore.QRect(10, 40, 121, 30))
-        self.button_load.setObjectName("load_project")
-        self.button_load.setText('Load project')
-
-        self.button_rewrite = QPushButton(self)
-        self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
-        self.button_rewrite.setObjectName("rewrite")
-        self.button_rewrite.setText('Rewrite')
-
-        self.info_line = QLabel('Hellow!', parent=self)
-        self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
-        self.info_line.setAlignment(QtCore.Qt.AlignCenter)
-
-        self.button_load.clicked.connect(self.load_project)
-        self.button_rewrite.clicked.connect(self.rewrite)
-
-        self.elements_list.clicked.connect(self.elements_list_clicked)
-        self.label_list_widget.clicked.connect(self.label_list_clicked)
+        self.setupUI()
+        self.graphics_view = GraphicsView(self)
+        self.graphics_view.setGeometry(150, 100, 1200, 800)
 
         self.load_project()
 
@@ -86,7 +70,7 @@ class CentralWidget(QWidget):
                 answer = message.exec_()
                 if answer == QMessageBox.Yes:
                     dirlist_points, _ = QFileDialog.getOpenFileName(None, "Выбрать папку",
-                                                                              self.dirlist + '/Контрольные точки/')
+                                                                    self.dirlist + '/Контрольные точки/')
                     if dirlist_points:
                         with open(dirlist_points, 'r') as ff:
                             self.dict = json.loads(ff.read(), strict=False)
@@ -111,11 +95,11 @@ class CentralWidget(QWidget):
 
                 self.elements_list.setCurrentRow(0)
 
-            self.label_list_widget.clear()
+            self.scene_list.clear()
             for file in glob.glob(self.dirlist + r'\Виды\*'):
-                self.label_list_widget.addItem(QListWidgetItem(file.split('\\')[-1]))
-                self.create_label(file)
-            self.label_list_widget.setCurrentRow(0)
+                self.scene_list.addItem(QListWidgetItem(file.split('\\')[-1]))
+                self.create_scene(file)
+            self.scene_list.setCurrentRow(0)
             self.label_list_clicked()
 
             self.set_line(f'Elements & images loaded from {self.dirlist}')
@@ -132,12 +116,12 @@ class CentralWidget(QWidget):
         print(f'item clicked {self.elements_list.currentItem().text()}')
 
     def label_list_clicked(self):
-        item = self.label_list_widget.currentItem().text()
-        for element in self.findChildren(Label):
+
+        item = self.scene_list.currentItem().text()
+        for element in self.findChildren(GraphicsScene):
             if element.objectName() != item:
-                element.hide()
-            else:
-                element.show()
+                # noinspection PyTypeChecker
+                self.graphics_view.setScene(element)
 
     def rewrite(self):
         self_dict = self.dict
@@ -160,8 +144,8 @@ class CentralWidget(QWidget):
                             ['Views'][str(label.image.index)] = \
                             {'L': int(element.x() * label.image.kx_label),
                              'T': int(element.y() * label.image.ky_label),
-                             'R': int(element.x() * label.image.kx_label) + label.image.kx_label*7,
-                             'B': int(element.y() * label.image.ky_label) + label.image.kx_label*7,
+                             'R': int(element.x() * label.image.kx_label) + label.image.kx_label * 7,
+                             'B': int(element.y() * label.image.ky_label) + label.image.kx_label * 7,
                              'Section': element.objectName()}
 
         with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
@@ -176,7 +160,7 @@ class CentralWidget(QWidget):
             '#ListElements {border: 3px solid black};')
         vbox = QVBoxLayout()
         vbox.addWidget(self.elements_list)
-        vbox.addWidget(self.label_list_widget)
+        vbox.addWidget(self.scene_list)
         list_area.setLayout(vbox)
 
     def create_item(self, el_type: str = "Ошибка"):
@@ -210,24 +194,43 @@ class CentralWidget(QWidget):
 
         return item_widget, el_label, el_type_label
 
-    def create_label(self, path):
-        image = Canvas(path, model=model)
-        label = Label(parent=self, image=image)
-        label.setObjectName(path.split('\\')[-1])
-        label.setGeometry(140, 100, 1200, 800)
-        label.setStyleSheet(
-            "#{cen_label} /{{background-color: rgb(100,120,100);/}}".format(cen_label=path.split('\\')[-1])
-        )
-        return label
+    def create_scene(self, path):
+        canvas = Canvas(path, model=model)
+        scene = GraphicsScene(self.graphics_view, canvas)
+        scene.setObjectName(path.split('\\')[-1])
+        self.graphics_view.setScene(scene)
 
     def set_line(self, text=None, color='rgb(0, 0, 0)'):
         self.info_line.setText(text)
         if color:
             self.info_line.setStyleSheet(f"color: {color};")
 
+    def setupUI(self):
+        self.button_load = QPushButton(self)
+        self.button_load.setGeometry(QtCore.QRect(10, 40, 121, 30))
+        self.button_load.setObjectName("load_project")
+        self.button_load.setText('Load project')
+
+        self.button_rewrite = QPushButton(self)
+        self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
+        self.button_rewrite.setObjectName("rewrite")
+        self.button_rewrite.setText('Rewrite')
+
+        self.info_line = QLabel('Hellow!', parent=self)
+        self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
+        self.info_line.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.button_load.clicked.connect(self.load_project)
+        self.button_rewrite.clicked.connect(self.rewrite)
+
+        self.elements_list.clicked.connect(self.elements_list_clicked)
+        self.scene_list.clicked.connect(self.label_list_clicked)
+
+
 
 if __name__ == "__main__":
     import sys
+
 
     model = build_model()
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
