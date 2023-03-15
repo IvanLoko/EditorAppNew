@@ -10,7 +10,7 @@ class SimpleRect(QGraphicsRectItem):
 
     def __init__(self, x_start, y_start, x_finish, y_finish, object_name=''):
         super().__init__()
-        self.objlect_name = object_name
+        self.object_name = object_name
         self.setRect(min(x_start, x_finish),
                      min(y_start, y_finish),
                      np.abs(x_start - x_finish),
@@ -20,11 +20,9 @@ class SimpleRect(QGraphicsRectItem):
         pen.setWidth(2)
         self.setPen(pen)
 
-
-
 class SimplePoint(QGraphicsRectItem):
 
-    def __init__(self, geom, object_name=''):
+    def __init__(self,  geom, object_name=''):
         super().__init__()
 
         self.setRect(int(geom[0] / 4), int(geom[1] / 4), 7, 7)

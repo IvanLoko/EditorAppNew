@@ -100,7 +100,7 @@ class CentralWidget(QWidget):
                 self.scene_list.addItem(QListWidgetItem(file.split('\\')[-1]))
                 self.create_scene(file)
             self.scene_list.setCurrentRow(0)
-            self.label_list_clicked()
+            self.scene_list_clicked()
 
             self.set_line(f'Elements & images loaded from {self.dirlist}')
         else:
@@ -115,38 +115,38 @@ class CentralWidget(QWidget):
     def elements_list_clicked(self):
         print(f'item clicked {self.elements_list.currentItem().text()}')
 
-    def label_list_clicked(self):
+    def scene_list_clicked(self):
 
         item = self.scene_list.currentItem().text()
         for element in self.findChildren(GraphicsScene):
-            if element.objectName() != item:
+            if element.objectName() == item:
                 # noinspection PyTypeChecker
                 self.graphics_view.setScene(element)
 
     def rewrite(self):
         self_dict = self.dict
-        for label in self.findChildren(Label):
-            for element in label.objects:
+        for scene in self.findChildren(GraphicsScene):
+            for element in scene.items():
 
                 if isinstance(element, SimpleRect):
-                    if element.objectName() in self_dict['Elements']:
-                        self_dict['Elements'][element.objectName()] \
-                            ['Views'][str(label.image.index)] = \
-                            [{'L': int(element.x() * label.image.kx_label),
-                              'T': int(element.y() * label.image.ky_label),
-                              'R': int((element.x() + element.width()) * label.image.kx_label),
-                              'B': int((element.y() + element.height()) * label.image.ky_label),
-                              'Section': element.objectName()}]
+                    if element.object_name in self_dict['Elements']:
+                        self_dict['Elements'][element.object_name] \
+                            ['Views'][str(scene.canvas.index)] = \
+                            [{'L': int(element.rect().topLeft().x()),
+                              'T': int(element.rect().topLeft().y()),
+                              'R': int(element.rect().bottomRight().x()),
+                              'B': int(element.rect().bottomRight().y()),
+                              'Section': element.object_name}]
 
                 if isinstance(element, SimplePoint):
-                    if element.objectName() in self_dict['Dots']:
-                        self_dict['Dots'][element.objectName()] \
-                            ['Views'][str(label.image.index)] = \
-                            {'L': int(element.x() * label.image.kx_label),
-                             'T': int(element.y() * label.image.ky_label),
-                             'R': int(element.x() * label.image.kx_label) + label.image.kx_label * 7,
-                             'B': int(element.y() * label.image.ky_label) + label.image.kx_label * 7,
-                             'Section': element.objectName()}
+                    if element.object_name in self_dict['Dots']:
+                        self_dict['Dots'][element.object_name] \
+                            ['Views'][str(scene.canvas.index)] = \
+                            {'L': int(element.rect().topLeft().x()),
+                             'T': int(element.rect().topLeft().y()),
+                             'R': int(element.rect().bottomRight().x()),
+                             'B': int(element.rect().bottomRight().y()),
+                             'Section': element.object_name}
 
         with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
             json.dump(self_dict, ff, indent=1)
@@ -198,6 +198,7 @@ class CentralWidget(QWidget):
         canvas = Canvas(path, model=model)
         scene = GraphicsScene(self.graphics_view, canvas)
         scene.setObjectName(path.split('\\')[-1])
+        scene.setSceneRect(0, 0, scene.width(), scene.height())
         self.graphics_view.setScene(scene)
 
     def set_line(self, text=None, color='rgb(0, 0, 0)'):
@@ -224,13 +225,11 @@ class CentralWidget(QWidget):
         self.button_rewrite.clicked.connect(self.rewrite)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
-        self.scene_list.clicked.connect(self.label_list_clicked)
-
+        self.scene_list.clicked.connect(self.scene_list_clicked)
 
 
 if __name__ == "__main__":
     import sys
-
 
     model = build_model()
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
