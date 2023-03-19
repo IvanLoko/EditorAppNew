@@ -9,18 +9,21 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, Qt
-from PyQt5.QtGui import QColor, QPixmap
-from PyQt5 import QtCore
+from PyQt5.QtCore import QRect, Qt, QObject
+from PyQt5.QtGui import QColor, QPixmap, QIcon
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication, QHBoxLayout, QCheckBox, QGraphicsPixmapItem
+    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsScene, QGraphicsPixmapItem
 import json
 
 from canvas import Canvas
-from centralLabel import GraphicsScene
+from centralLabel import Label, GraphicsScene
 from SimpleObjects import SimplePoint, SimpleRect
 from model import build_model
 from centralLabel import GraphicsView
+from titleBar import TitleWidget
+from main_bar import MainBar
+from side_panel import SidePanel, SB, ElementLabel, ListWidget, Slider
+from tool_bar import ToolBar
 
 
 class Ui_MainWindow(QMainWindow):
@@ -32,23 +35,41 @@ class Ui_MainWindow(QMainWindow):
 
         self.setObjectName("MainWindow")
         self.resize(1920, 1080)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowTitle("Editor App")
+        self.setWindowIcon(QIcon("src/icons/TestLogo.png"))
 
-        self.central_widget = CentralWidget()
+        self.central_widget = CentralWidget(self)
         self.central_widget.setObjectName("centralwidget")
 
         self.setCentralWidget(self.central_widget)
+
+    def minimize(self) -> None:
+        self.showMinimized()
+
+    def maximize(self, title_bar) -> None:
+        self.showMaximized()
+        title_bar.MaxButton.setVisible(False)
+        title_bar.RestoreButton.setVisible(True)
+
+    def restore(self, title_bar) -> None:
+        self.showNormal()
+        title_bar.MaxButton.setVisible(True)
+        title_bar.RestoreButton.setVisible(False)
+
+    def close(self) -> None:
+        sys.exit(app.exec_())
 
 
 class CentralWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-
-        self.w = 510
         self.dict = None
-        self.elements_list = QListWidget()
-        self.scene_list = QListWidget(self)
-        self.create_list()
+        self.elements_list = ListWidget(self)
+        self.circuit_map = ElementLabel(self)
+        self.sb = SB(self)
+        # self.scene_list = QListWidget()
         self.dirlist = None
         self.setupUI()
         self.graphics_view = GraphicsView(self)
@@ -64,6 +85,8 @@ class CentralWidget(QWidget):
             try:
                 with open(self.dirlist + r'/Контрольные точки/Points', 'r') as ff:
                     self.dict = json.loads(ff.read(), strict=False)
+                    self.parent().setWindowTitle(self.dirlist.split('/')[-1])
+                    self.title_bar.title_text.setText(self.dirlist.split('/')[-1])
             except FileNotFoundError:
                 message = QMessageBox()
                 message.setText('Файл Points не найден,\n найти вручную?')
@@ -96,19 +119,16 @@ class CentralWidget(QWidget):
 
                 self.elements_list.setCurrentRow(0)
 
-            self.scene_list.clear()
             for file in glob.glob(self.dirlist + r'\Виды\*'):
-                self.scene_list.addItem(QListWidgetItem(file.split('\\')[-1]))
+                pass
                 self.create_scene(file)
-            self.scene_list.setCurrentRow(0)
-            self.scene_list_clicked()
 
             self.set_line(f'Elements & images loaded from {self.dirlist}')
         else:
             self.set_line('Project are not loaded')
 
     def next_item(self):
-        self.elements_list.currentItem().setBackground(QColor("#AAFFAA"))
+        self.elements_list.currentItem().setBackground(QColor("#07A707"))
         self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
         if self.elements_list.currentItem() is None:
             raise AttributeError
@@ -116,55 +136,44 @@ class CentralWidget(QWidget):
     def elements_list_clicked(self):
         print(f'item clicked {self.elements_list.currentItem().text()}')
 
-    def scene_list_clicked(self):
-        item = self.scene_list.currentItem().text()
-        for element in self.findChildren(GraphicsScene):
-            if element.objectName() == item:
-                # noinspection PyTypeChecker
-                self.graphics_view.setScene(element)
+    # def label_list_clicked(self):
+    #
+    #     item = self.scene_list.currentItem().text()
+    #     for element in self.findChildren(GraphicsScene):
+    #         if element.objectName() != item:
+    #             # noinspection PyTypeChecker
+    #             self.graphics_view.setScene(element)
 
     def rewrite(self):
         self_dict = self.dict
-        for scene in self.findChildren(GraphicsScene):
-            for element in scene.items():
+        for label in self.findChildren(Label):
+            for element in label.objects:
 
                 if isinstance(element, SimpleRect):
-                    if element.object_name in self_dict['Elements']:
-                        self_dict['Elements'][element.object_name] \
-                            ['Views'][str(scene.canvas.index)] = \
-                            [{'L': int(element.rect().topLeft().x()),
-                              'T': int(element.rect().topLeft().y()),
-                              'R': int(element.rect().bottomRight().x()),
-                              'B': int(element.rect().bottomRight().y()),
-                              'Section': element.object_name}]
+                    if element.objectName() in self_dict['Elements']:
+                        self_dict['Elements'][element.objectName()] \
+                            ['Views'][str(label.image.index)] = \
+                            [{'L': int(element.x() * label.image.kx_label),
+                              'T': int(element.y() * label.image.ky_label),
+                              'R': int((element.x() + element.width()) * label.image.kx_label),
+                              'B': int((element.y() + element.height()) * label.image.ky_label),
+                              'Section': element.objectName()}]
 
                 if isinstance(element, SimplePoint):
-                    if element.object_name in self_dict['Dots']:
-                        self_dict['Dots'][element.object_name] \
-                            ['Views'][str(scene.canvas.index)] = \
-                            {'L': int(element.rect().topLeft().x()),
-                             'T': int(element.rect().topLeft().y()),
-                             'R': int(element.rect().bottomRight().x()),
-                             'B': int(element.rect().bottomRight().y()),
-                             'Section': element.object_name}
+                    if element.objectName() in self_dict['Dots']:
+                        self_dict['Dots'][element.objectName()] \
+                            ['Views'][str(label.image.index)] = \
+                            {'L': int(element.x() * label.image.kx_label),
+                             'T': int(element.y() * label.image.ky_label),
+                             'R': int(element.x() * label.image.kx_label) + label.image.kx_label * 7,
+                             'B': int(element.y() * label.image.ky_label) + label.image.kx_label * 7,
+                             'Section': element.objectName()}
 
         with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
             json.dump(self_dict, ff, indent=1)
         self.set_line(f'File {self.dirlist}/Контрольные точки/Points rewrote', 'rgb(0, 200, 0)')
 
-    def create_list(self):
-        list_area = QWidget(self)
-        list_area.setObjectName('ListElements')
-        list_area.setGeometry(QRect(1400, 100, 400, 800))
-        list_area.setStyleSheet(
-            '#ListElements {border: 3px solid black};')
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.elements_list)
-        vbox.addWidget(self.scene_list)
-        list_area.setLayout(vbox)
-
-    @staticmethod
-    def create_item(el_type: str = "Ошибка"):
+    def create_item(self, el_type: str = "Ошибка"):
         item_widget = QWidget()
         item_widget.setFixedSize(400, 22)
 
@@ -184,7 +193,7 @@ class CentralWidget(QWidget):
         layout.addWidget(el_label)
         layout.addWidget(el_type_label)
 
-        el_type_label.setStyleSheet("color: #1111BB; "
+        el_type_label.setStyleSheet("color: #AEE8F5; "
                                     "font-size: 8pt; "
                                     "border: 1px solid #727272; "
                                     "border-right: 0px; "
@@ -199,43 +208,7 @@ class CentralWidget(QWidget):
         canvas = Canvas(path, model=model)
         scene = GraphicsScene(self.graphics_view, canvas)
         scene.setObjectName(path.split('\\')[-1])
-
-        box = QCheckBox(self)
-        box.setText(scene.objectName())
-        box.setObjectName(path)
-        box.setGeometry(1820, self.w, 20, 20)
-        self.w += 25
-
         self.graphics_view.setScene(scene)
-
-        box.stateChanged.connect(self.overlay)
-
-    def overlay(self):
-        if self.sender().isChecked():
-            self.sender().objectName()
-            add_pic = QGraphicsPixmapItem()
-            add_pix = QPixmap(self.sender().objectName())
-
-            add_pic.setPixmap(add_pix)
-            add_pic.setOpacity(0.5)
-            self.graphics_view.scene().addItem(add_pic)
-        else:
-            self.graphics_view.scene().roll_back()
-
-    def add_image(self):
-        file_path = QFileDialog.getOpenFileName(caption="Выберите изображение", filter="Images (*.png *.jpg)")[0]. \
-            replace('/', '\\')
-        self.scene_list.addItem(QListWidgetItem(file_path.split('\\')[-1]))
-        self.create_scene(file_path)
-        self.scene_list.setCurrentRow(self.scene_list.count() - 1)
-
-    def change_mod(self):
-        if self.graphics_view.mod == 'standard':
-            self.graphics_view.mod = 'AI'
-        elif self.graphics_view.mod == 'AI':
-            self.graphics_view.mod = 'standard'
-
-        self.set_line(text=self.graphics_view.mod)
 
     def set_line(self, text=None, color='rgb(0, 0, 0)'):
         self.info_line.setText(text)
@@ -243,37 +216,29 @@ class CentralWidget(QWidget):
             self.info_line.setStyleSheet(f"color: {color};")
 
     def setupUI(self):
-        self.button_load = QPushButton(self)
-        self.button_load.setGeometry(QtCore.QRect(10, 40, 121, 30))
-        self.button_load.setObjectName("load_project")
-        self.button_load.setText('Load project')
 
-        self.button_rewrite = QPushButton(self)
-        self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
-        self.button_rewrite.setObjectName("rewrite")
-        self.button_rewrite.setText('Rewrite')
+        self.side_panel = SidePanel(self)
+        self.side_panel.move(1520, 60)
 
-        self.button_add_image = QPushButton(self)
-        self.button_add_image.setGeometry(QtCore.QRect(10, 80, 101, 30))
-        self.button_add_image.setObjectName("add_image")
-        self.button_add_image.setText('Add image')
+        self.tool_bar = ToolBar(self)
+        self.tool_bar.move(0, 60)
 
-        self.mod = QPushButton(self)
-        self.mod.setGeometry(QtCore.QRect(10, 160, 101, 30))
-        self.mod.setObjectName("mod")
-        self.mod.setText('Mod')
+        self.title_bar = TitleWidget(self)
+        self.title_bar.setGeometry(0, 0, self.title_bar.width(), 30)
+
+        self.main_line = MainBar(self)
+        self.main_line.setGeometry(0, 30, self.main_line.width(), 30)
+
+        self.title_bar.MinButton.clicked.connect(self.parent().minimize)
+        self.title_bar.MaxButton.clicked.connect(lambda: self.parent().maximize(self.title_bar))
+        self.title_bar.RestoreButton.clicked.connect(lambda: self.parent().restore(self.title_bar))
+        self.title_bar.CloseButton.clicked.connect(self.parent().close)
 
         self.info_line = QLabel('Hellow!', parent=self)
-        self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
-        self.info_line.setAlignment(QtCore.Qt.AlignCenter)
-
-        self.button_load.clicked.connect(self.load_project)
-        self.button_rewrite.clicked.connect(self.rewrite)
-        self.button_add_image.clicked.connect(self.add_image)
-        self.mod.clicked.connect(self.change_mod)
+        self.info_line.setGeometry(QRect(0, 933, 1920, 30))
+        self.info_line.setAlignment(Qt.AlignCenter)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
-        self.scene_list.clicked.connect(self.scene_list_clicked)
 
 
 if __name__ == "__main__":
