@@ -9,17 +9,21 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, QEvent, Qt
-from PyQt5.QtGui import QColor
-from PyQt5 import QtCore
+from PyQt5.QtCore import QRect, Qt, QObject
+from PyQt5.QtGui import QColor, QPixmap, QIcon
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication, QHBoxLayout
+    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsScene, QGraphicsPixmapItem
 import json
 
 from canvas import Canvas
-from centralLabel import Label
+from centralLabel import Label, GraphicsScene
 from SimpleObjects import SimplePoint, SimpleRect
 from model import build_model
+from centralLabel import GraphicsView
+from titleBar import TitleWidget
+from main_bar import MainBar
+from side_panel import SidePanel, SB, ElementLabel, ListWidget, Slider
+from tool_bar import ToolBar
 
 
 class Ui_MainWindow(QMainWindow):
@@ -31,43 +35,45 @@ class Ui_MainWindow(QMainWindow):
 
         self.setObjectName("MainWindow")
         self.resize(1920, 1080)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowTitle("Editor App")
+        self.setWindowIcon(QIcon("src/icons/TestLogo.png"))
 
-        self.central_widget = CentralWidget()
+        self.central_widget = CentralWidget(self)
         self.central_widget.setObjectName("centralwidget")
 
         self.setCentralWidget(self.central_widget)
+
+    def minimize(self) -> None:
+        self.showMinimized()
+
+    def maximize(self, title_bar) -> None:
+        self.showMaximized()
+        title_bar.MaxButton.setVisible(False)
+        title_bar.RestoreButton.setVisible(True)
+
+    def restore(self, title_bar) -> None:
+        self.showNormal()
+        title_bar.MaxButton.setVisible(True)
+        title_bar.RestoreButton.setVisible(False)
+
+    def close(self) -> None:
+        sys.exit(app.exec_())
 
 
 class CentralWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-
         self.dict = None
-        self.elements_list = QListWidget()
-        self.label_list_widget = QListWidget()
-        self.create_list()
+        self.elements_list = ListWidget(self)
+        self.circuit_map = ElementLabel(self)
+        self.sb = SB(self)
+        # self.scene_list = QListWidget()
         self.dirlist = None
-
-        self.button_load = QPushButton(self)
-        self.button_load.setGeometry(QtCore.QRect(10, 40, 121, 30))
-        self.button_load.setObjectName("load_project")
-        self.button_load.setText('Load project')
-
-        self.button_rewrite = QPushButton(self)
-        self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
-        self.button_rewrite.setObjectName("rewrite")
-        self.button_rewrite.setText('Rewrite')
-
-        self.info_line = QLabel('Hellow!', parent=self)
-        self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
-        self.info_line.setAlignment(QtCore.Qt.AlignCenter)
-
-        self.button_load.clicked.connect(self.load_project)
-        self.button_rewrite.clicked.connect(self.rewrite)
-
-        self.elements_list.clicked.connect(self.elements_list_clicked)
-        self.label_list_widget.clicked.connect(self.label_list_clicked)
+        self.setupUI()
+        self.graphics_view = GraphicsView(self)
+        self.graphics_view.setGeometry(150, 100, 1200, 800)
 
         self.load_project()
 
@@ -79,6 +85,8 @@ class CentralWidget(QWidget):
             try:
                 with open(self.dirlist + r'/Контрольные точки/Points', 'r') as ff:
                     self.dict = json.loads(ff.read(), strict=False)
+                    self.parent().setWindowTitle(self.dirlist.split('/')[-1])
+                    self.title_bar.title_text.setText(self.dirlist.split('/')[-1])
             except FileNotFoundError:
                 message = QMessageBox()
                 message.setText('Файл Points не найден,\n найти вручную?')
@@ -86,7 +94,7 @@ class CentralWidget(QWidget):
                 answer = message.exec_()
                 if answer == QMessageBox.Yes:
                     dirlist_points, _ = QFileDialog.getOpenFileName(None, "Выбрать папку",
-                                                                              self.dirlist + '/Контрольные точки/')
+                                                                    self.dirlist + '/Контрольные точки/')
                     if dirlist_points:
                         with open(dirlist_points, 'r') as ff:
                             self.dict = json.loads(ff.read(), strict=False)
@@ -111,19 +119,16 @@ class CentralWidget(QWidget):
 
                 self.elements_list.setCurrentRow(0)
 
-            self.label_list_widget.clear()
             for file in glob.glob(self.dirlist + r'\Виды\*'):
-                self.label_list_widget.addItem(QListWidgetItem(file.split('\\')[-1]))
-                self.create_label(file)
-            self.label_list_widget.setCurrentRow(0)
-            self.label_list_clicked()
+                pass
+                self.create_scene(file)
 
             self.set_line(f'Elements & images loaded from {self.dirlist}')
         else:
             self.set_line('Project are not loaded')
 
     def next_item(self):
-        self.elements_list.currentItem().setBackground(QColor("#AAFFAA"))
+        self.elements_list.currentItem().setBackground(QColor("#07A707"))
         self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
         if self.elements_list.currentItem() is None:
             raise AttributeError
@@ -131,13 +136,13 @@ class CentralWidget(QWidget):
     def elements_list_clicked(self):
         print(f'item clicked {self.elements_list.currentItem().text()}')
 
-    def label_list_clicked(self):
-        item = self.label_list_widget.currentItem().text()
-        for element in self.findChildren(Label):
-            if element.objectName() != item:
-                element.hide()
-            else:
-                element.show()
+    # def label_list_clicked(self):
+    #
+    #     item = self.scene_list.currentItem().text()
+    #     for element in self.findChildren(GraphicsScene):
+    #         if element.objectName() != item:
+    #             # noinspection PyTypeChecker
+    #             self.graphics_view.setScene(element)
 
     def rewrite(self):
         self_dict = self.dict
@@ -160,24 +165,13 @@ class CentralWidget(QWidget):
                             ['Views'][str(label.image.index)] = \
                             {'L': int(element.x() * label.image.kx_label),
                              'T': int(element.y() * label.image.ky_label),
-                             'R': int(element.x() * label.image.kx_label) + label.image.kx_label*7,
-                             'B': int(element.y() * label.image.ky_label) + label.image.kx_label*7,
+                             'R': int(element.x() * label.image.kx_label) + label.image.kx_label * 7,
+                             'B': int(element.y() * label.image.ky_label) + label.image.kx_label * 7,
                              'Section': element.objectName()}
 
         with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
             json.dump(self_dict, ff, indent=1)
         self.set_line(f'File {self.dirlist}/Контрольные точки/Points rewrote', 'rgb(0, 200, 0)')
-
-    def create_list(self):
-        list_area = QWidget(self)
-        list_area.setObjectName('ListElements')
-        list_area.setGeometry(QRect(1400, 100, 400, 800))
-        list_area.setStyleSheet(
-            '#ListElements {border: 3px solid black};')
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.elements_list)
-        vbox.addWidget(self.label_list_widget)
-        list_area.setLayout(vbox)
 
     def create_item(self, el_type: str = "Ошибка"):
         item_widget = QWidget()
@@ -199,7 +193,7 @@ class CentralWidget(QWidget):
         layout.addWidget(el_label)
         layout.addWidget(el_type_label)
 
-        el_type_label.setStyleSheet("color: #1111BB; "
+        el_type_label.setStyleSheet("color: #AEE8F5; "
                                     "font-size: 8pt; "
                                     "border: 1px solid #727272; "
                                     "border-right: 0px; "
@@ -210,20 +204,41 @@ class CentralWidget(QWidget):
 
         return item_widget, el_label, el_type_label
 
-    def create_label(self, path):
-        image = Canvas(path, model=model)
-        label = Label(parent=self, image=image)
-        label.setObjectName(path.split('\\')[-1])
-        label.setGeometry(140, 100, 1200, 800)
-        label.setStyleSheet(
-            "#{cen_label} /{{background-color: rgb(100,120,100);/}}".format(cen_label=path.split('\\')[-1])
-        )
-        return label
+    def create_scene(self, path):
+        canvas = Canvas(path, model=model)
+        scene = GraphicsScene(self.graphics_view, canvas)
+        scene.setObjectName(path.split('\\')[-1])
+        self.graphics_view.setScene(scene)
 
     def set_line(self, text=None, color='rgb(0, 0, 0)'):
         self.info_line.setText(text)
         if color:
             self.info_line.setStyleSheet(f"color: {color};")
+
+    def setupUI(self):
+
+        self.side_panel = SidePanel(self)
+        self.side_panel.move(1520, 60)
+
+        self.tool_bar = ToolBar(self)
+        self.tool_bar.move(0, 60)
+
+        self.title_bar = TitleWidget(self)
+        self.title_bar.setGeometry(0, 0, self.title_bar.width(), 30)
+
+        self.main_line = MainBar(self)
+        self.main_line.setGeometry(0, 30, self.main_line.width(), 30)
+
+        self.title_bar.MinButton.clicked.connect(self.parent().minimize)
+        self.title_bar.MaxButton.clicked.connect(lambda: self.parent().maximize(self.title_bar))
+        self.title_bar.RestoreButton.clicked.connect(lambda: self.parent().restore(self.title_bar))
+        self.title_bar.CloseButton.clicked.connect(self.parent().close)
+
+        self.info_line = QLabel('Hellow!', parent=self)
+        self.info_line.setGeometry(QRect(0, 933, 1920, 30))
+        self.info_line.setAlignment(Qt.AlignCenter)
+
+        self.elements_list.clicked.connect(self.elements_list_clicked)
 
 
 if __name__ == "__main__":
