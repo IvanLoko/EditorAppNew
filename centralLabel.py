@@ -1,5 +1,4 @@
 import cv2
-from PyQt5 import QtCore
 from PyQt5.QtCore import QRect, Qt, QEvent, QPoint
 from PyQt5.QtGui import QPainter, QPixmap, QBrush, QPen, QTransform
 from PyQt5.QtWidgets import QLabel, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsRectItem
@@ -23,6 +22,15 @@ class GraphicsScene(QGraphicsScene):
         self.pic.setPixmap(pixmap)
         self.addItem(self.pic)
 
+    def roll_back(self):
+        print(self.items())
+        for item in self.items():
+            print(item == self.pic)
+            if item != self.pic and isinstance(item, QGraphicsPixmapItem):
+                self.removeItem(item)
+        print(self.items())
+
+
 
 class GraphicsView(QGraphicsView):
 
@@ -42,7 +50,7 @@ class GraphicsView(QGraphicsView):
             self.transform_func.translate(-event.pos().x(), -event.pos().y())
             self.setTransform(self.transform_func)
 
-        elif self.mod == 'AI':
+        if event.buttons() == Qt.LeftButton and self.mod == 'AI':
             if not self.start.isNull() and not self.finish.isNull():
                 self.finish = self.mapToScene(event.pos())
                 if self.items():
@@ -66,33 +74,34 @@ class GraphicsView(QGraphicsView):
 
     def mouseReleaseEvent(self, event) -> None:
         if self.mod == 'AI':
-            [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
-            self.add_rect()
-
-            self.points = np.array([self.start.x() * self.scene().kw,
-                                    self.start.y() * self.scene().kh,
-                                    self.finish.x() * self.scene().kw,
-                                    self.finish.y() * self.scene().kh]).astype('int32')
-            self.add_rect()
-
-            if self.start == self.finish:
-                return
-
-            try:
-                dots = self.scene().canvas.pins2json(self.points)
+            if event.button() == Qt.LeftButton:
+                [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
                 self.add_rect()
-                self.add_points(points=dots)
-                self.parent().next_item()
-            except NonePointError:
-                self.parent().set_line('There is no points in area', 'rgb(237, 28, 36)')
-            except cv2.error:
-                self.parent().set_line('Incorrect area', 'rgb(237, 28, 36)')
-            except IndexError:
-                self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
-            except TypeError:
-                self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
-            except AttributeError:
-                self.parent().set_line('Set element in element list', 'rgb(237, 28, 36)')
+
+                self.points = np.array([self.start.x() * self.scene().kw,
+                                        self.start.y() * self.scene().kh,
+                                        self.finish.x() * self.scene().kw,
+                                        self.finish.y() * self.scene().kh]).astype('int32')
+                self.add_rect()
+
+                if self.start == self.finish:
+                    return
+
+                try:
+                    dots = self.scene().canvas.pins2json(self.points)
+                    self.add_rect()
+                    self.add_points(points=dots)
+                    self.parent().next_item()
+                except NonePointError:
+                    self.parent().set_line('There is no points in area', 'rgb(237, 28, 36)')
+                except cv2.error:
+                    self.parent().set_line('Incorrect area', 'rgb(237, 28, 36)')
+                except IndexError:
+                    self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
+                except TypeError:
+                    self.parent().set_line('smth wrong but idk what', 'rgb(237, 28, 36)')
+                except AttributeError:
+                    self.parent().set_line('Set element in element list', 'rgb(237, 28, 36)')
             self.start = QPoint()
             self.finish = QPoint()
 
@@ -100,11 +109,11 @@ class GraphicsView(QGraphicsView):
         scale = 1 + event.angleDelta().y() / 1200
         self.transform_func.scale(scale, scale)
         self.zoom += event.angleDelta().y()
-        if self.zoom < 0:
-            self.resetTransform()
-            self.transform_func = QTransform()
-            self.zoom = 0
-            return
+        # if self.zoom < 0:
+        #     self.resetTransform()
+        #     self.transform_func = QTransform()
+        #     self.zoom = 0
+        #     return
         self.setTransform(self.transform_func)
 
     def add_rect(self):

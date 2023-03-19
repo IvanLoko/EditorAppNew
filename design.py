@@ -9,15 +9,15 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, Qt, QObject
+from PyQt5.QtCore import QRect, Qt
 from PyQt5.QtGui import QColor, QPixmap
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsScene, QGraphicsPixmapItem
+    QPushButton, QFileDialog, QApplication, QHBoxLayout, QCheckBox, QGraphicsPixmapItem
 import json
 
 from canvas import Canvas
-from centralLabel import Label, GraphicsScene
+from centralLabel import GraphicsScene
 from SimpleObjects import SimplePoint, SimpleRect
 from model import build_model
 from centralLabel import GraphicsView
@@ -44,9 +44,10 @@ class CentralWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
+        self.w = 510
         self.dict = None
         self.elements_list = QListWidget()
-        self.scene_list = QListWidget()
+        self.scene_list = QListWidget(self)
         self.create_list()
         self.dirlist = None
         self.setupUI()
@@ -116,7 +117,6 @@ class CentralWidget(QWidget):
         print(f'item clicked {self.elements_list.currentItem().text()}')
 
     def scene_list_clicked(self):
-
         item = self.scene_list.currentItem().text()
         for element in self.findChildren(GraphicsScene):
             if element.objectName() == item:
@@ -162,8 +162,8 @@ class CentralWidget(QWidget):
         vbox.addWidget(self.elements_list)
         vbox.addWidget(self.scene_list)
         list_area.setLayout(vbox)
-
-    def create_item(self, el_type: str = "Ошибка"):
+    @staticmethod
+    def create_item(el_type: str = "Ошибка"):
         item_widget = QWidget()
         item_widget.setFixedSize(400, 22)
 
@@ -198,8 +198,37 @@ class CentralWidget(QWidget):
         canvas = Canvas(path, model=model)
         scene = GraphicsScene(self.graphics_view, canvas)
         scene.setObjectName(path.split('\\')[-1])
-        scene.setSceneRect(0, 0, scene.width(), scene.height())
+
+        box = QCheckBox(self)
+        box.setText(scene.objectName())
+        box.setObjectName(path)
+        box.setGeometry(1820, self.w, 20, 20)
+        self.w += 25
+
         self.graphics_view.setScene(scene)
+
+        box.stateChanged.connect(self.overlay)
+
+    def overlay(self):
+        if self.sender().isChecked():
+            print(self.sender().isChecked())
+            self.sender().objectName()
+            add_pic = QGraphicsPixmapItem()
+            add_pix = QPixmap(self.sender().objectName())
+
+            add_pic.setPixmap(add_pix)
+            add_pic.setOpacity(0.5)
+            self.graphics_view.scene().addItem(add_pic)
+        else:
+            self.graphics_view.scene().roll_back()
+
+    def add_image(self):
+        file_path = QFileDialog.getOpenFileName(None,  "Выберите изображение", '', "Images (*.png *.jpg)")[0].\
+            replace('/', '\\')
+        self.scene_list.addItem(QListWidgetItem(file_path.split('\\')[-1]))
+        self.create_scene(file_path)
+        self.scene_list.setCurrentRow(self.scene_list.count()-1)
+
 
     def set_line(self, text=None, color='rgb(0, 0, 0)'):
         self.info_line.setText(text)
@@ -217,12 +246,18 @@ class CentralWidget(QWidget):
         self.button_rewrite.setObjectName("rewrite")
         self.button_rewrite.setText('Rewrite')
 
+        self.button_add_image = QPushButton(self)
+        self.button_add_image.setGeometry(QtCore.QRect(10, 80, 101, 30))
+        self.button_add_image.setObjectName("add_image")
+        self.button_add_image.setText('Add image')
+
         self.info_line = QLabel('Hellow!', parent=self)
         self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
         self.info_line.setAlignment(QtCore.Qt.AlignCenter)
 
         self.button_load.clicked.connect(self.load_project)
         self.button_rewrite.clicked.connect(self.rewrite)
+        self.button_add_image.clicked.connect(self.add_image)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
         self.scene_list.clicked.connect(self.scene_list_clicked)

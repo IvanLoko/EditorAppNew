@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QMimeData, Qt, QPoint
 from PyQt5.QtGui import QPen, QTransform, QBrush
-from PyQt5.QtWidgets import QLabel, QGraphicsRectItem, QGraphicsView
+from PyQt5.QtWidgets import QLabel, QGraphicsRectItem, QGraphicsView, QListWidget, QListWidgetItem, QWidget, \
+    QHBoxLayout, QCheckBox
 from qtpy import QtGui
 
 import numpy as np
@@ -31,6 +32,7 @@ class SimplePoint(QGraphicsRectItem):
         pen.setColor(Qt.white)
         pen.setWidth(2)
         self.setPen(pen)
+
 
 
 class SL(QLabel):

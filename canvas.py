@@ -31,9 +31,13 @@ class Canvas:
 
         with open(self.path, 'rb') as f:
             image_bytes = bytearray(f.read())
-        indexes = int(re.findall('{"ID" : (\d+)}', str(image_bytes))[-1])
+        indexes = re.findall('{"ID" : (\d+)}', str(image_bytes))
         del image_bytes
-        return indexes
+        if indexes:
+            return indexes[-1]
+        else:
+            return None
+
 
     def pins2json(self, coordinates: np.array):
         """Функция генерации json-файла пинов.
@@ -115,13 +119,18 @@ class Canvas:
             rectangles = np.concatenate([left, right[::-1]])
 
             num = 1
-            while num < len(rectangles) - 1:
-                if abs(rectangles[num, 1] - rectangles[num - 1, 1]) < width_rectangle * 3.1:
+            while num < len(rectangles):
+                if abs(rectangles[num, 1] - rectangles[num - 1, 1]) < width_rectangle * 1.1:
                     if rectangles[num - 1, 0] == rectangles[num, 0]:
-                        row = [rectangles[num-1, 0],
-                               int((rectangles[num, 1] + rectangles[num - 1, 1]) / 2)]
-                        rectangles = np.delete(rectangles, (num - 1, num), axis=0)
-                        rectangles = np.insert(rectangles, num-1, row, axis=0)
+                        print(rectangles.shape, rectangles)
+                        rectangles = np.delete(rectangles, num, axis=0)
+                        print(rectangles.shape, rectangles)
+                        num -= 1
+                        # row = [rectangles[num-1, 0],
+                        #        int((rectangles[num, 1] + rectangles[num - 1, 1]) / 2)]
+                        # rectangles = np.delete(rectangles, (num - 1, num), axis=0)
+                        # rectangles = np.insert(rectangles, num-1, row, axis=0)
+
                 num += 1
 
             rectangles[:, 0] = rectangles[:, 0] * self.kx_label
