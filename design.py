@@ -225,33 +225,6 @@ class CentralWidget(QWidget):
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
 
-    def setupUI(self):
-        self.button_load = QPushButton(self)
-        self.button_load.setGeometry(QtCore.QRect(10, 40, 121, 30))
-        self.button_load.setObjectName("load_project")
-        self.button_load.setText('Load project')
-
-        self.button_rewrite = QPushButton(self)
-        self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
-        self.button_rewrite.setObjectName("rewrite")
-        self.button_rewrite.setText('Rewrite')
-
-        self.button_add_image = QPushButton(self)
-        self.button_add_image.setGeometry(QtCore.QRect(10, 80, 101, 30))
-        self.button_add_image.setObjectName("add_image")
-        self.button_add_image.setText('Add image')
-
-        self.info_line = QLabel('Hellow!', parent=self)
-        self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
-        self.info_line.setAlignment(QtCore.Qt.AlignCenter)
-
-        self.button_load.clicked.connect(self.load_project)
-        self.button_rewrite.clicked.connect(self.rewrite)
-        self.button_add_image.clicked.connect(self.add_image)
-
-        self.elements_list.clicked.connect(self.elements_list_clicked)
-        self.scene_list.clicked.connect(self.scene_list_clicked)
-
 
 if __name__ == "__main__":
     import sys
