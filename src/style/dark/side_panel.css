@@ -1,0 +1,76 @@
+#SectionLabel {
+    border: 1px solid #727272;
+    background-color: #969696;
+    color: #AEE8F5;
+}
+
+#ElementList {
+    background-color: #565656;
+    color: rgba(0, 0, 0, 0);
+    border: 1px solid #727272;
+}
+
+#ItemWidgetEl {
+    color: #AEE8F5;
+    font-size: 9pt;
+}
+
+#ItemWidgetElType {
+    color: #AEE8F5;
+    font-size: 8pt;
+    border: 1px solid #727272;
+    border-right: 0px;
+    border-top: 0px;
+    border-bottom: 0px;
+}
+
+#ElementLabel {
+    background-color: #565656;
+    color: #AEE8F5;
+    border: 1px solid #727272;
+}
+
+#SB {
+    border: 1px solid #727272;
+    background-color: #565656;
+}
+
+#SBName {
+    color: #AEE8F5;
+    font-size: 12pt;
+}
+
+#SBLoad {
+    background-color: #565656;
+    border: 0px;
+}
+
+#SBHide {
+    border: 0px;
+    background-color: #565656;
+}
+
+#SBHide:hover {
+    background-color: #646464;
+}
+
+#opSB {
+    background-color: #646464;
+    border: 1px solid #969696;
+}
+
+#OpacityInput {
+    background-color: #646464;
+    color: #AEE8F5;
+    border: 1px solid #727272;
+}
+
+#SliderButton {
+    background-color: #727272;
+    border: 1px solid #969696;
+    color: #AEE8F5;
+}
+
+#SliderButton:hover {
+    background-color: #848484;
+}

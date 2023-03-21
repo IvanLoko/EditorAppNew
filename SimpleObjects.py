@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QMimeData, Qt, QPoint
 from PyQt5.QtGui import QPen, QTransform, QBrush
-from PyQt5.QtWidgets import QLabel, QGraphicsRectItem, QGraphicsView
-from qtpy import QtGui
+from PyQt5.QtWidgets import QLabel, QGraphicsRectItem, QGraphicsView, QListWidget, QListWidgetItem, QWidget, \
+    QHBoxLayout, QCheckBox
 
 import numpy as np
 
@@ -10,7 +10,7 @@ class SimpleRect(QGraphicsRectItem):
 
     def __init__(self, x_start, y_start, x_finish, y_finish, object_name=''):
         super().__init__()
-        self.objlect_name = object_name
+        self.object_name = object_name
         self.setRect(min(x_start, x_finish),
                      min(y_start, y_finish),
                      np.abs(x_start - x_finish),
@@ -23,7 +23,7 @@ class SimpleRect(QGraphicsRectItem):
 
 class SimplePoint(QGraphicsRectItem):
 
-    def __init__(self, geom, object_name=''):
+    def __init__(self,  geom, object_name=''):
         super().__init__()
 
         self.setRect(int(geom[0] / 4), int(geom[1] / 4), 7, 7)
@@ -36,7 +36,7 @@ class SimplePoint(QGraphicsRectItem):
 
 class SL(QLabel):
 
-    def __init__(self,parent=None, pos=None, name=None):
+    def __init__(self, parent=None, pos=None, name=None):
         super().__init__(parent=parent)
         self.setText(name)
         self.setStyleSheet('background-color: white')

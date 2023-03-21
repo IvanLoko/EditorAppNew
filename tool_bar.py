@@ -10,9 +10,8 @@ class ToolBar(QLabel):
         self.setupUI()
 
     def setupUI(self):
-        self.setFixedSize(60, 1020)
+        self.setFixedSize(60, 990)
         self.setObjectName("ToolBar")
-        self.setStyleSheet("#ToolBar {background-color: #646464; border: 1px solid #727272;}")
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 10, 0, 0)
@@ -21,51 +20,39 @@ class ToolBar(QLabel):
 
         self.setLayout(layout)
 
-        self.AI_button = QPushButton()
+        self.AI_button = QPushButton("1")
         self.AI_button.setObjectName("AIButton")
-        self.AI_button.setFixedSize(40, 40)
-        self.AI_button.setIcon(QIcon("src/icons/dark/rect.png"))
-        self.AI_button.setIconSize(QSize(40, 40))
+        self.AI_button.setFixedSize(30, 30)
 
         layout.addWidget(self.AI_button)
 
-        self.AXE_button = QPushButton()
+        self.AXE_button = QPushButton("2")
         self.AXE_button.setObjectName("AXEButton")
-        self.AXE_button.setFixedSize(40, 40)
-        self.AXE_button.setIcon(QIcon("src/icons/dark/rewrite.png"))
-        self.AXE_button.setIconSize(QSize(40, 40))
+        self.AXE_button.setFixedSize(30, 30)
 
         layout.addWidget(self.AXE_button)
 
-        self.selection_button = QPushButton()
+        self.selection_button = QPushButton("3")
         self.selection_button.setObjectName("SelectionButton")
-        self.selection_button.setFixedSize(40, 40)
-        self.selection_button.setIcon(QIcon("src/icons/dark/select.png"))
-        self.selection_button.setIconSize(QSize(40, 40))
+        self.selection_button.setFixedSize(30, 30)
 
         layout.addWidget(self.selection_button)
 
-        self.pins_button = QPushButton()
+        self.pins_button = QPushButton("4")
         self.pins_button.setObjectName("PinsButton")
-        self.pins_button.setFixedSize(40, 40)
-        self.pins_button.setIcon(QIcon("src/icons/dark/square.png"))
-        self.pins_button.setIconSize(QSize(40, 40))
+        self.pins_button.setFixedSize(30, 30)
 
         layout.addWidget(self.pins_button)
 
-        self.rotation_button = QPushButton()
+        self.rotation_button = QPushButton("5")
         self.rotation_button.setObjectName("RotationButton")
-        self.rotation_button.setFixedSize(40, 40)
-        self.rotation_button.setIcon(QIcon("src/icons/dark/zoom.png"))
-        self.rotation_button.setIconSize(QSize(40, 40))
+        self.rotation_button.setFixedSize(30, 30)
 
         layout.addWidget(self.rotation_button)
 
-        self.mirror_button = QPushButton()
+        self.mirror_button = QPushButton("6")
         self.mirror_button.setObjectName("MirrorButton")
-        self.mirror_button.setFixedSize(40, 40)
-        self.mirror_button.setIcon(QIcon("src/icons/dark/zoom.png"))
-        self.mirror_button.setIconSize(QSize(40, 40))
+        self.mirror_button.setFixedSize(30, 30)
 
         layout.addWidget(self.mirror_button)
 
