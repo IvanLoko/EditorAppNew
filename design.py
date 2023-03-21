@@ -14,6 +14,7 @@ from PyQt5.QtGui import QColor, QPixmap, QPalette
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
     QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsPixmapItem
+    
 import json
 
 from canvas import Canvas
@@ -124,6 +125,7 @@ class CentralWidget(QWidget):
                 self.create_tab(file.split('\\')[-1])
                 self.sb = SB(self, file.split('\\')[-1])
                 self.side_panel.layout.addWidget(self.sb)
+                
             self.tab_clicked(self.tab)
 
             self.set_line(f'Elements & images loaded from {self.dirlist}', Qt.darkGreen)
@@ -179,6 +181,7 @@ class CentralWidget(QWidget):
 
         with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
             json.dump(self_dict, ff, indent=1)
+            
         self.set_line(f'File {self.dirlist}/Контрольные точки/Points rewrote', Qt.darkGreen)
 
     def create_tab(self, name="Empty"):
@@ -190,7 +193,6 @@ class CentralWidget(QWidget):
         canvas = Canvas(path, model=model)
         scene = GraphicsScene(self.graphics_view, canvas)
         scene.setObjectName(path.split('\\')[-1])
-
         self.graphics_view.setScene(scene)
 
     def set_line(self, text=None, color=None):
@@ -222,6 +224,33 @@ class CentralWidget(QWidget):
         self.info_line.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
+
+    def setupUI(self):
+        self.button_load = QPushButton(self)
+        self.button_load.setGeometry(QtCore.QRect(10, 40, 121, 30))
+        self.button_load.setObjectName("load_project")
+        self.button_load.setText('Load project')
+
+        self.button_rewrite = QPushButton(self)
+        self.button_rewrite.setGeometry(QtCore.QRect(10, 120, 101, 30))
+        self.button_rewrite.setObjectName("rewrite")
+        self.button_rewrite.setText('Rewrite')
+
+        self.button_add_image = QPushButton(self)
+        self.button_add_image.setGeometry(QtCore.QRect(10, 80, 101, 30))
+        self.button_add_image.setObjectName("add_image")
+        self.button_add_image.setText('Add image')
+
+        self.info_line = QLabel('Hellow!', parent=self)
+        self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
+        self.info_line.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.button_load.clicked.connect(self.load_project)
+        self.button_rewrite.clicked.connect(self.rewrite)
+        self.button_add_image.clicked.connect(self.add_image)
+
+        self.elements_list.clicked.connect(self.elements_list_clicked)
+        self.scene_list.clicked.connect(self.scene_list_clicked)
 
 
 if __name__ == "__main__":

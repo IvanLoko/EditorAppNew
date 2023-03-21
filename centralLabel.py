@@ -117,7 +117,7 @@ class GraphicsView(QGraphicsView):
                     self.parent().set_line('(x_start <= x_finish or y_start <= y_finish) == True,  vpadlu fixitj :)', Qt.red)
                 except AttributeError:
                     self.parent().set_line('Set element in element list', Qt.darkYellow)
-
+                    
             self.start = QPoint()
             self.finish = QPoint()
 

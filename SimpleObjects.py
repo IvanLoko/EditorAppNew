@@ -19,8 +19,8 @@ class SimpleRect(QGraphicsRectItem):
         pen.setColor(Qt.white)
         pen.setWidth(2)
         self.setPen(pen)
-
-
+        
+        
 class SimplePoint(QGraphicsRectItem):
 
     def __init__(self,  geom, object_name=''):
