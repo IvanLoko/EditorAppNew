@@ -1,0 +1,13 @@
+#ToolBar {
+    background-color: #646464;
+    border: 1px solid #727272;
+}
+
+QPushButton {
+    border: 1px solid #969696;
+    border-radius: 5px;
+}
+
+QPushButton:hover {
+     background-color: #848484;
+}

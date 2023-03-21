@@ -1,0 +1,49 @@
+#Title {
+    border: 1px solid #727272;
+    border-right: 0px;
+    background-color: #525252;
+}
+
+#TitleText {
+    color: #AEE8F5;
+}
+
+#MinButton {
+    background-color: #525252;
+    border: 0px;
+    border-bottom: 1px solid #727272;
+}
+
+#MinButton:hover {
+    background-color: #646464;
+}
+
+#MaxButton {
+    background-color: #525252;
+    border: 0px;
+    border-bottom: 1px solid #727272;
+}
+
+#MaxButton:hover {
+    background-color: #646464;
+}
+
+#RestoreButton {
+    background-color: #525252;
+    border: 0px;
+    border-bottom: 1px solid #727272;
+}
+
+#RestoreButton:hover {
+    background-color: #646464;
+}
+
+#CloseButton {
+    background-color: #525252;
+    border: 0px;
+    border-bottom: 1px solid #727272;
+}
+
+#CloseButton:hover {
+    background-color: #AA2121;
+}

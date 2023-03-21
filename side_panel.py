@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QCursor, QPixmap, QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QHBoxLayout, QSlider
+from PyQt5.QtGui import QCursor, QPixmap, QIcon, QFont
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QHBoxLayout, QSlider, QListWidgetItem, QCheckBox, QFileDialog, QGraphicsPixmapItem
 
 
 class SidePanel(QWidget):
@@ -11,23 +11,24 @@ class SidePanel(QWidget):
         self.setObjectName("SidePanel")
 
         self.slider = Slider(self.parent())
-        self.slider.move(1801, 1005)
+        self.slider.move(1786, 975)
 
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.setAlignment(Qt.AlignTop)
+        self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+        self.layout.setAlignment(Qt.AlignTop)
 
-        self.setLayout(layout)
+        self.setLayout(self.layout)
 
-        layout.addWidget(SectionLabel("Список элементов", self))
-        layout.addWidget(self.parent().elements_list)
+        # При перемещении в сетку родитель объекта !меняется! на владельца сетки
 
-        layout.addWidget(SectionLabel("Текущий элемент", self))
-        layout.addWidget(self.parent().circuit_map)
+        self.layout.addWidget(SectionLabel("Список элементов", self))
+        self.layout.addWidget(self.parent().elements_list)
 
-        layout.addWidget(SectionLabel("Сборочник", self))
-        layout.addWidget(self.parent().sb)
+        self.layout.addWidget(SectionLabel("Текущий элемент", self))
+        self.layout.addWidget(self.parent().circuit_map)
+
+        self.layout.addWidget(SectionLabel("Сборочник", self))
 
         with open("src/style/dark/side_panel.css") as style:
             self.setStyleSheet(style.read())
@@ -39,13 +40,15 @@ class SidePanel(QWidget):
 
     def change_op(self):
         self.parent().sb.opacity.setValue(self.slider.sliderPosition())
+        if self.parent().sb.hide_button.isChecked() and self.parent().sb.add_pic:
+            self.parent().sb.add_pic.setOpacity(self.slider.sliderPosition() / 100)
 
 
 class ListWidget(QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self.setFixedSize(400, 660)
+        self.setFixedSize(400, 630)
         self.setObjectName("ElementList")
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -54,6 +57,8 @@ class ListWidget(QListWidget):
 class ElementLabel(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+
+        # parent = SidePanel
 
         self.setupUI()
 
@@ -66,10 +71,19 @@ class ElementLabel(QLabel):
 
 
 class SB(QLabel):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, image_name=None):
         super().__init__(parent=parent)
+        # parent() = SidePanel
+        # true_parent = central_widget
+
+        # image_name = scene img
+        self.image_name = image_name
+
+        self.true_parent = parent
+        self.add_pic = None
 
         self.setupUI()
+        self.hide()
 
     def setupUI(self):
 
@@ -89,7 +103,7 @@ class SB(QLabel):
         self.SB_load.setObjectName("SBLoad")
         self.SB_load.setFixedSize(180, 30)
         self.SB_load.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        # self.SB_load.clicked.connect()
+        self.SB_load.clicked.connect(self.sbLoad)
 
         icon = QLabel(self.SB_load)
         icon.setGeometry(5, 5, 20, 20)
@@ -107,13 +121,14 @@ class SB(QLabel):
 
         # <HIDE BUTTON>
 
-        self.hide_button = QPushButton()
+        self.hide_button = QCheckBox()
         self.hide_button.setObjectName("SBHide")
-        self.hide_button.setFixedSize(30, 20)
-        self.hide_button.setIcon(QIcon("src/icons/dark/close.png"))
-        self.hide_button.setIconSize(QSize(30, 20))
+        self.hide_button.setFixedSize(15, 15)
+        self.hide_button.setCheckable(False)
 
         layout.addWidget(self.hide_button)
+
+        self.hide_button.clicked.connect(self.overlay)
 
         # </HIDE BUTTON>
 
@@ -134,6 +149,7 @@ class SB(QLabel):
         self.opacity.setMinimum(0)
         self.opacity.setMaximum(999)
         self.opacity.setButtonSymbols(2)
+        self.opacity.setValue(20)
         self.opacity.valueChanged.connect(self.trim)
         self.opacity.setObjectName("OpacityInput")
         self.opacity.setFixedSize(100, 30)
@@ -160,7 +176,33 @@ class SB(QLabel):
 
         self.update()
 
+    def sbLoad(self):
+        # Загрузка сборочника к текущей сцене
+        file_path = QFileDialog.getOpenFileName(None, "Выберите изображение", '', "Images (*.png *.jpg)")[0]. \
+            replace('/', '\\')
+        self.img.setText(file_path.split('\\')[-1])
+        if self.add_pic:
+            self.true_parent.graphics_view.scene().roll_back()
+        self.add_pic = QGraphicsPixmapItem()
+        add_pix = QPixmap(file_path)
+
+        self.add_pic.setPixmap(add_pix)
+        self.add_pic.setOpacity(self.opacity.value() / 100)
+        self.true_parent.graphics_view.scene().addItem(self.add_pic)
+
+        self.hide_button.setCheckable(True)
+        self.hide_button.setChecked(True)
+
+    def overlay(self):
+        if self.add_pic:
+            if self.hide_button.isChecked():
+                # (self.opacity.value() = int(0:100); setOpacity(float(0:1))
+                self.add_pic.setOpacity(self.opacity.value() / 100)
+            else:
+                self.add_pic.setOpacity(0)
+
     def trim(self):
+        # nosuff = "x%".remove("%")
         nosuff = self.opacity.text()[-1:]
         if len(nosuff) > 1 and nosuff[0] == "0":
             self.opacity.setValue(int(nosuff[1:]))
@@ -177,19 +219,23 @@ class SB(QLabel):
             self.parent().slider_change(0)
             self.sliderbutton.setText("↑")
 
+        for el in self.parent().findChildren(SB):
+            el.sliderbutton.setText(self.sliderbutton.text())
+
 
 class SectionLabel(QLabel):
     def __init__(self, name, parent=None):
         super().__init__(parent=parent)
 
         self.setText(name)
-        self.setFixedSize(400, 20)
+        self.setFixedSize(400, 30)
         self.setAlignment(Qt.AlignCenter)
         self.setObjectName("SectionLabel")
 
 
 class Slider(QSlider):
     def __init__(self, parent=None):
+        # parent = central_widget
         super().__init__(parent=parent)
         self.hide()
 
@@ -197,6 +243,7 @@ class Slider(QSlider):
         self.setObjectName("Slider")
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setOrientation(Qt.Horizontal)
+        self.setValue(20)
         self.valueChanged.connect(self.change_op)
         self.setMinimum(0)
         self.setMaximum(100)
@@ -208,3 +255,34 @@ class Slider(QSlider):
 
     def change_op(self):
         self.parent().side_panel.change_op()
+
+
+class ListWidgetItem(QListWidgetItem):
+    def __init__(self, el: str = "Ошибка", el_type: str = "Тип не обнаружен"):
+
+        super().__init__()
+
+        self.widget = QWidget()
+        self.widget.setFixedSize(400, 20)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        el_label = QLabel(el)
+        el_label.setFixedSize(100, 20)
+        el_label.setObjectName("ItemWidgetEl")
+        el_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        el_label.setContentsMargins(3, 0, 0, 0)
+
+        el_type_label = QLabel(el_type)
+        el_type_label.setFixedSize(300, 20)
+        el_type_label.setObjectName("ItemWidgetElType")
+        el_type_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        el_type_label.setContentsMargins(3, 0, 0, 0)
+
+        layout.addWidget(el_label)
+        layout.addWidget(el_type_label)
+
+        self.widget.setLayout(layout)
