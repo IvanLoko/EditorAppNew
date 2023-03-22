@@ -149,7 +149,7 @@ class SB(QLabel):
         self.opacity.setMinimum(0)
         self.opacity.setMaximum(999)
         self.opacity.setButtonSymbols(2)
-        self.opacity.setValue(20)
+        self.opacity.setValue(40)
         self.opacity.valueChanged.connect(self.trim)
         self.opacity.setObjectName("OpacityInput")
         self.opacity.setFixedSize(100, 30)

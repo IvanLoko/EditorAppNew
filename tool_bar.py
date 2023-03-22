@@ -23,6 +23,7 @@ class ToolBar(QLabel):
         self.AI_button = QPushButton("1")
         self.AI_button.setObjectName("AIButton")
         self.AI_button.setFixedSize(30, 30)
+        self.AI_button.clicked.connect(self.parent().mod_AI)
 
         layout.addWidget(self.AI_button)
 
@@ -35,6 +36,8 @@ class ToolBar(QLabel):
         self.selection_button = QPushButton("3")
         self.selection_button.setObjectName("SelectionButton")
         self.selection_button.setFixedSize(30, 30)
+
+        self.selection_button.clicked.connect(self.parent().mod_STANDARD)
 
         layout.addWidget(self.selection_button)
 
@@ -55,6 +58,7 @@ class ToolBar(QLabel):
         self.mirror_button.setFixedSize(30, 30)
 
         layout.addWidget(self.mirror_button)
+
 
         with open("src/style/dark/tool_bar.css") as style:
             self.setStyleSheet(style.read())
