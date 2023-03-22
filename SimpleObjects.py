@@ -1,12 +1,13 @@
-from PyQt5.QtCore import QMimeData, Qt, QPoint
+from PyQt5.QtCore import QMimeData, Qt, QPoint, QPointF
 from PyQt5.QtGui import QPen, QTransform, QBrush
 from PyQt5.QtWidgets import QLabel, QGraphicsRectItem, QGraphicsView, QListWidget, QListWidgetItem, QWidget, \
-    QHBoxLayout, QCheckBox
+    QHBoxLayout, QCheckBox, QGraphicsSimpleTextItem
 
 import numpy as np
 
 
 class SimpleRect(QGraphicsRectItem):
+    """Обозначение корпуса микросхемы"""
 
     def __init__(self, x_start, y_start, x_finish, y_finish, object_name=''):
         super().__init__()
@@ -20,25 +21,91 @@ class SimpleRect(QGraphicsRectItem):
         pen.setWidth(2)
         self.setPen(pen)
 
+        self.setAcceptHoverEvents(True)
+
+    def hoverEnterEvent(self, event) -> None:
+        """При наведении курсора мыши на объект, будет показано его имя"""
+        x = self.rect().x() + self.pos().x()
+        y = self.rect().y() - 20 + self.pos().y()
+        self.scene().addItem(SL((x, y), text=self.object_name))
+
+    def hoverLeaveEvent(self, event):
+        """Как только курсор покидает область объекта, удаляет текст его имени"""
+        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+
+    def mousePressEvent(self, event):
+        pass
+
+    def mouseMoveEvent(self, event):
+        """Перемещение объекта по сцене"""
+        pos = event.lastScenePos()
+        upd_pos = event.scenePos()
+
+        orig_pos = self.scenePos()
+
+        upd_x = upd_pos.x() - pos.x() + orig_pos.x()
+        upd_y = upd_pos.y() - pos.y() + orig_pos.y()
+        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+        self.setPos(QPointF(upd_x, upd_y))
+
+    def mouseReleaseEvent(self, event):
+        pass
+
 
 class SimplePoint(QGraphicsRectItem):
+    """Обозначение выводов микросхемы"""
 
-    def __init__(self,  geom, object_name=''):
+    def __init__(self, geom, object_name=''):
         super().__init__()
 
         self.setRect(int(geom[0] / 4), int(geom[1] / 4), 7, 7)
         self.object_name = object_name
+
         pen = QPen()
-        pen.setColor(Qt.white)
+        if self.object_name.split('_')[-1] == '1':
+            pen.setColor(Qt.red)
+        else:
+            pen.setColor(Qt.white)
         pen.setWidth(2)
         self.setPen(pen)
 
+        self.setAcceptHoverEvents(True)
 
-class SL(QLabel):
+    def hoverEnterEvent(self, event) -> None:
+        """При наведении курсора мыши на объект, будет показано его имя"""
+        x = self.rect().x() + self.pos().x()
+        y = self.rect().y() - 20 + self.pos().y()
+        self.scene().addItem(SL((x, y), text=self.object_name))
 
-    def __init__(self, parent=None, pos=None, name=None):
-        super().__init__(parent=parent)
-        self.setText(name)
-        self.setStyleSheet('background-color: white')
-        self.move(pos)
+    def hoverLeaveEvent(self, event):
+        """Как только курсор покидает область объекта, удаляет текст его имени"""
+        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+
+    def mousePressEvent(self, event):
+        pass
+
+    def mouseMoveEvent(self, event):
+        """Перемещение объекта по сцене"""
+        pos = event.lastScenePos()
+        upd_pos = event.scenePos()
+
+        orig_pos = self.scenePos()
+
+        upd_x = upd_pos.x() - pos.x() + orig_pos.x()
+        upd_y = upd_pos.y() - pos.y() + orig_pos.y()
+        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+        self.setPos(QPointF(upd_x, upd_y))
+
+    def mouseReleaseEvent(self, event):
+        pass
+
+
+class SL(QGraphicsSimpleTextItem):
+    """Класс для отображения имени объекта"""
+
+    def __init__(self, pos=None, text=None):
+        super().__init__()
+        self.setText(text)
+        self.setPos(*pos)
+        self.setBrush(QBrush(Qt.red))
         self.show()
