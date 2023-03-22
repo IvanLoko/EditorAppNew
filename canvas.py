@@ -31,43 +31,30 @@ class Canvas:
 
         with open(self.path, 'rb') as f:
             image_bytes = bytearray(f.read())
-        indexes = re.findall('{"ID" : (\d+)}', str(image_bytes))
+        indexes = re.findall("{'ID' : (\d+)}", str(image_bytes))
         del image_bytes
         if indexes:
             return indexes[-1]
         else:
             return None
 
-
     def pins2json(self, coordinates: np.array):
-        """Функция генерации json-файла пинов.
+        """Функция генерации координат пинов.
 
-        На выходе создается json-файл вида:
-        { 1 pin : [leftTop , rightBotoom],
-        ...
+        На выходе создается отсортированный массив вида:
+        [[LeftTop_x, LeftTop_y],
+        ....
+         [LeftTop_x, LeftTop_y]]
 
-        ...
-          N pin : [leftTop , rightBotoom]
-        }
-        где * pin - номер пина,
-        leftTop - координаты левого верхнего угла квардрата соответствующего пина
-        rightBottom - координаты правого нижнего угла квардрата соответствующего пина.
+        Порядок элементов в массиве соответствует номеру вывода микросхемы
 
-        В зависимости от параметра mod, определеятся очередность нумерции пинов
-        mod = {'rt', 'rb', 'lt', 'lb'}
-
-        пин № 1 (0) будет будет присвоен в зависимости от параметра mod:
-
-        rt -  правому верхнему
-        rb - правому нижнему
-        lt - левому верхнему
-        lb - левому нижнему"""
+        Первый пин определеяется в зависимости от угла нажатия при выделении объекта (выделение объекта начиная с левого
+        вехнего угла будет означать, что первый пин находится в левом верхнем углу"""
 
         def dumping_json(centers_sorted: np.array):
-            """Функция создания 'квадратов' для обозначения пинов на фото
-            и последущая упаковка координат углов в json-файл"""
+            """Функция усреднения, корректировки и масштабирования пинов"""
 
-            width_rectangle = int(self.ky_label * 7)
+            width_rectangle = int(self.ky_label * 14)
             # Получаем центральную координату y для микросхемы для выравнивания меток пинов по вертикали
             mean_val = centers_sorted[:, 0].mean()
 
@@ -79,60 +66,52 @@ class Canvas:
             centers_sorted[:, 0][centers_sorted[:, 0] > mean_val] = r_mean
             centers_sorted[:, 0][centers_sorted[:, 0] < mean_val] = l_mean
 
-            # Создаем координаты правого верхнего и левого нижнего пинов путем отступа 7 px.
-            # В итоге получится квадрат со стороной 14 px
+            # Создаем координаты правого верхнего и левого нижнего пинов путем отступа width_rectangle px.
+            # В итоге получится квадрат со стороной width_rectangle px
 
-            rectangles = np.array([[contour[0] - width_rectangle, contour[1] - width_rectangle]
+            rectangles = np.array([[contour[0] - width_rectangle/2, contour[1] - width_rectangle/2]
                                    for contour in centers_sorted]).astype('int16')
 
+            # Алгоритм соответствия пинов по вертикальной координате
             left = rectangles[rectangles[:, 0] < mean_val]
             right = rectangles[rectangles[:, 0] > mean_val][::-1]
 
             num = 0
-            if left[0, 0] > left[0, 1]:
-                while num != min(len(right), len(left)):
-                    if abs(left[num, 1] - right[num, 1]) > width_rectangle * 3.1:
-                        if left[num, 1] > right[num, 1]:
-                            left = np.insert(left, num, [left[0, 0], right[num, 1]], axis=0,)
-                            num = 0
-                        else:
-                            right = np.insert(right, num, [right[0, 0], left[num, 1]], axis=0)
-                            num = 0
-                    num += 1
-            else:
-                while num != min(len(right), len(left)):
-                    if abs(left[num, 1] - right[num, 1]) > width_rectangle * 3.1:
-                        if left[num, 1] > right[num, 1]:
-                            left = np.insert(left, num, [left[0, 0], right[num, 1]], axis=0, )
-                            num = 0
-                        else:
-                            right = np.insert(right, num, [right[0, 0], left[num, 1]], axis=0)
-                            num = 0
-                    num += 1
-
-            while len(right) != len(left):
-                if len(right) < len(left):
-                    right = np.insert(right, -1, [right[0, 0], left[len(right), 1]], axis=0)
-                if len(right) > len(left):
-                    left = np.insert(left, -1, [left[0, 0], right[len(left), 1]], axis=0)
-
-            rectangles = np.concatenate([left, right[::-1]])
-
-            num = 1
-            while num < len(rectangles):
-                if abs(rectangles[num, 1] - rectangles[num - 1, 1]) < width_rectangle * 1.1:
-                    if rectangles[num - 1, 0] == rectangles[num, 0]:
-                        print(rectangles.shape, rectangles)
-                        rectangles = np.delete(rectangles, num, axis=0)
-                        print(rectangles.shape, rectangles)
-                        num -= 1
-                        # row = [rectangles[num-1, 0],
-                        #        int((rectangles[num, 1] + rectangles[num - 1, 1]) / 2)]
-                        # rectangles = np.delete(rectangles, (num - 1, num), axis=0)
-                        # rectangles = np.insert(rectangles, num-1, row, axis=0)
-
+            while num != min(len(right), len(left)):
+                if abs(left[num, 1] - right[num, 1]) > width_rectangle * 1.5:
+                    if left[num, 1] > right[num, 1]:
+                        left = np.insert(left, num, [left[0, 0], right[num, 1]], axis=0, )
+                        num = 0
+                    else:
+                        right = np.insert(right, num, [right[0, 0], left[num, 1]], axis=0)
+                        num = 0
                 num += 1
 
+            # Алгоритм добавляет симметрично точки пока количество пинов слева не будет равно количеству справа
+            # или наоборот
+            while len(right) != len(left):
+                if len(right) < len(left):
+                    right = np.append(right, [[right[0, 0], left[len(right), 1]]], axis=0)
+                if len(right) > len(left):
+                    left = np.append(left, [[left[0, 0], right[len(left), 1]]], axis=0)
+
+            if x1 > x2 and y1 > y2:
+                rectangles = np.concatenate([right[::-1], left])
+            else:
+                rectangles = np.concatenate([left, right[::-1]])
+
+            # # Алгоритм удаления "наложившихся" точек. Если площади прямоугольников пересекаются, одна из них удаляется
+            num = 1
+            while num < len(rectangles):
+                print(rectangles[num, 1], rectangles[num - 1, 1], width_rectangle * 1.1)
+                if abs(rectangles[num, 1] - rectangles[num - 1, 1]) < width_rectangle * 1.1:
+                    if rectangles[num - 1, 0] == rectangles[num, 0]:
+                        print('deleted')
+                        rectangles = np.delete(rectangles, num, axis=0)
+                        num -= 1
+                num += 1
+
+            # Масштабирование
             rectangles[:, 0] = rectangles[:, 0] * self.kx_label
             rectangles[:, 1] = rectangles[:, 1] * self.ky_label
 
@@ -180,9 +159,9 @@ class Canvas:
         # Мод = 'rb'
         if x1 > x2 and y1 > y2:
             cen_sorted = sorted(
-                centers[centers[:, 0] > centers[:, 0].mean()], key=lambda x: x[1]
+                centers[centers[:, 0] > centers[:, 0].mean()], key=lambda x: x[1], reverse=True
             ) + sorted(
-                centers[centers[:, 0] < centers[:, 0].mean()], key=lambda x: x[1], reverse=True
+                centers[centers[:, 0] < centers[:, 0].mean()], key=lambda x: x[1]
             )
             return dumping_json(centers_sorted=np.array(cen_sorted))
 

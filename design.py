@@ -162,6 +162,7 @@ class CentralWidget(QWidget):
         vbox.addWidget(self.elements_list)
         vbox.addWidget(self.scene_list)
         list_area.setLayout(vbox)
+
     @staticmethod
     def create_item(el_type: str = "Ошибка"):
         item_widget = QWidget()
@@ -211,7 +212,6 @@ class CentralWidget(QWidget):
 
     def overlay(self):
         if self.sender().isChecked():
-            print(self.sender().isChecked())
             self.sender().objectName()
             add_pic = QGraphicsPixmapItem()
             add_pix = QPixmap(self.sender().objectName())
@@ -223,12 +223,19 @@ class CentralWidget(QWidget):
             self.graphics_view.scene().roll_back()
 
     def add_image(self):
-        file_path = QFileDialog.getOpenFileName(None,  "Выберите изображение", '', "Images (*.png *.jpg)")[0].\
+        file_path = QFileDialog.getOpenFileName(caption="Выберите изображение", filter="Images (*.png *.jpg)")[0]. \
             replace('/', '\\')
         self.scene_list.addItem(QListWidgetItem(file_path.split('\\')[-1]))
         self.create_scene(file_path)
-        self.scene_list.setCurrentRow(self.scene_list.count()-1)
+        self.scene_list.setCurrentRow(self.scene_list.count() - 1)
 
+    def change_mod(self):
+        if self.graphics_view.mod == 'standard':
+            self.graphics_view.mod = 'AI'
+        elif self.graphics_view.mod == 'AI':
+            self.graphics_view.mod = 'standard'
+
+        self.set_line(text=self.graphics_view.mod)
 
     def set_line(self, text=None, color='rgb(0, 0, 0)'):
         self.info_line.setText(text)
@@ -251,6 +258,11 @@ class CentralWidget(QWidget):
         self.button_add_image.setObjectName("add_image")
         self.button_add_image.setText('Add image')
 
+        self.mod = QPushButton(self)
+        self.mod.setGeometry(QtCore.QRect(10, 160, 101, 30))
+        self.mod.setObjectName("mod")
+        self.mod.setText('Mod')
+
         self.info_line = QLabel('Hellow!', parent=self)
         self.info_line.setGeometry(QtCore.QRect(0, 933, 1920, 30))
         self.info_line.setAlignment(QtCore.Qt.AlignCenter)
@@ -258,6 +270,7 @@ class CentralWidget(QWidget):
         self.button_load.clicked.connect(self.load_project)
         self.button_rewrite.clicked.connect(self.rewrite)
         self.button_add_image.clicked.connect(self.add_image)
+        self.mod.clicked.connect(self.change_mod)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
         self.scene_list.clicked.connect(self.scene_list_clicked)

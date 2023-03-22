@@ -9,4 +9,4 @@ class NonePointError(Exception):
         if self.message:
             return f'NonePointsError, {self.message}. There is no points in area'
         else:
-            return 'There is no poin in area'
+            return 'There is no points in area'
