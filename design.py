@@ -74,7 +74,7 @@ class CentralWidget(QWidget):
         self.dirlist = None
         self.setupUI()
         self.graphics_view = GraphicsView(self)
-        self.graphics_view.setGeometry(150, 100, 1200, 800)
+        self.graphics_view.setGeometry(60, 60, 1520-60, 1050-60)
 
         self.image_tabs = []
         self.tab = None
@@ -152,6 +152,7 @@ class CentralWidget(QWidget):
                 self.side_panel.slider.setSliderPosition(self.sb.opacity.value())
                 return
 
+
     def rewrite(self):
         self_dict = self.dict
         for scene in self.findChildren(GraphicsScene):
@@ -200,6 +201,12 @@ class CentralWidget(QWidget):
             palette.setColor(QPalette.Text, color)
             self.info_line.setPalette(palette)
 
+    def mod_AI(self):
+        self.graphics_view.mod = 'AI'
+
+    def mod_STANDARD(self):
+        self.graphics_view.mod = 'standard'
+
     def setupUI(self):
         self.tool_bar = ToolBar(self)
         self.tool_bar.move(0, 60)
@@ -214,6 +221,7 @@ class CentralWidget(QWidget):
         self.title_bar.RestoreButton.clicked.connect(self.parent().restore)
         self.title_bar.CloseButton.clicked.connect(self.parent().close)
 
+
         self.main_bar = MainBar(self)
         self.main_bar.setGeometry(0, 30, 1520, 30)
 
@@ -222,6 +230,8 @@ class CentralWidget(QWidget):
         self.info_line.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
+
+
 
 
 if __name__ == "__main__":
