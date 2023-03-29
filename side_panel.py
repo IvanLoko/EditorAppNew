@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QCursor, QPixmap, QIcon, QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QHBoxLayout, QSlider, QListWidgetItem, QCheckBox, QFileDialog, QGraphicsPixmapItem
+from PyQt5.QtCore import Qt, QSize, QPointF, pyqtSignal, QRectF
+from PyQt5.QtGui import QCursor, QPixmap, QIcon, QFont, QColor
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QHBoxLayout, QSlider, QListWidgetItem, QCheckBox, QFileDialog, QGraphicsPixmapItem, QGraphicsObject
 
 
 class SidePanel(QWidget):
@@ -28,7 +28,7 @@ class SidePanel(QWidget):
         self.layout.addWidget(SectionLabel("Текущий элемент", self))
         self.layout.addWidget(self.parent().circuit_map)
 
-        self.layout.addWidget(SectionLabel("Сборочник", self))
+        self.layout.addWidget(SectionLabel("Сборочный чертеж", self))
 
         with open("src/style/dark/side_panel.css") as style:
             self.setStyleSheet(style.read())
@@ -258,31 +258,173 @@ class Slider(QSlider):
 
 
 class ListWidgetItem(QListWidgetItem):
-    def __init__(self, el: str = "Ошибка", el_type: str = "Тип не обнаружен"):
+    def __init__(self, el: str = "Ошибка", el_type: str = "Тип не обнаружен", parent=None):
 
         super().__init__()
 
         self.widget = QWidget()
-        self.widget.setFixedSize(400, 20)
+        self.widget.setFixedSize(400, 18)
+
+        self.status = False
+        self.status_color = self.background()
 
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-        el_label = QLabel(el)
-        el_label.setFixedSize(100, 20)
-        el_label.setObjectName("ItemWidgetEl")
-        el_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        el_label.setContentsMargins(3, 0, 0, 0)
+        self.el_label = ELLabel(el, parent)
 
-        el_type_label = QLabel(el_type)
-        el_type_label.setFixedSize(300, 20)
-        el_type_label.setObjectName("ItemWidgetElType")
-        el_type_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        el_type_label.setContentsMargins(3, 0, 0, 0)
+        self.el_type_label = ELTypeLabel(el_type, parent)
 
-        layout.addWidget(el_label)
-        layout.addWidget(el_type_label)
+        layout.addWidget(self.el_label)
+        layout.addWidget(self.el_type_label)
 
         self.widget.setLayout(layout)
+
+
+class ELLabel(QLabel):
+
+    def __init__(self, el, parent):
+
+        super().__init__()
+
+        with open("src/style/neutral/item_el.css") as style:
+            self.setStyleSheet(style.read())
+            del style
+
+        self.parent = parent
+
+        self.items = []
+        self.list_items = []
+
+        self.setText(el)
+        self.setFixedSize(100, 18)
+        self.setObjectName("ItemWidgetEl")
+        self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.setContentsMargins(3, 0, 0, 0)
+
+    def enterEvent(self, event):
+        """ Подсветить элемент, если он находится на текущей сцене """
+
+        for qitem in self.parent.elements_list.findItems(self.text(), Qt.MatchExactly):
+            if qitem.status:
+                qitem.setBackground(QColor("#7AA5C2"))
+            else:
+                qitem.setBackground(QColor("#3661A0"))
+
+                self.list_items.append(qitem)
+
+        for el in self.list_items:
+            self.items.append(el.text())
+
+        self.parent.highlight_graphic(self.items, True)
+
+    def leaveEvent(self, event):
+        """ Отмена подсветки """
+        for qitem in self.list_items:
+            qitem.setBackground(qitem.status_color)
+
+        self.parent.highlight_graphic(self.items, False)
+
+        self.items.clear()
+        self.list_items.clear()
+
+
+class ELTypeLabel(QLabel):
+
+    def __init__(self, el_type, parent):
+        
+        super().__init__()
+
+        with open("src/style/neutral/item_el.css") as style:
+            self.setStyleSheet(style.read())
+            del style
+
+        self.parent = parent
+
+        self.items = []
+
+        self.setText(el_type)
+        self.setFixedSize(300, 18)
+        self.setObjectName("ItemWidgetElType")
+        self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.setContentsMargins(3, 0, 0, 0)
+
+    def enterEvent(self, event):
+        """ Подсветить все элементы данного типа, находящиеся на текущей сцене """
+        # Подсветка в листе элементов
+        for item in range(self.parent.elements_list.count()):
+            qitem = self.parent.elements_list.item(item)
+
+            if isinstance(qitem, PinItem):
+                continue
+
+            if qitem.el_type_label.text() == self.text():
+                if qitem.status:
+                    qitem.setBackground(QColor("#7AA5C2"))
+                    self.items.append(qitem.el_label.text())
+                else:
+                    qitem.setBackground(QColor("#3661A0"))
+
+        # Подсветка QGraphicsView
+        self.parent.highlight_graphic(self.items, True)
+
+    def leaveEvent(self, event):
+        """ Отмена подсветки """
+        # Отмена подсветки в листе элементов
+        for item in range(self.parent.elements_list.count()):
+            qitem = self.parent.elements_list.item(item)
+
+            if isinstance(qitem, PinItem):
+                continue
+
+            if qitem.el_type_label.text() == self.text():
+                qitem.setBackground(qitem.status_color)
+
+        # Отмена подсветки QGraphicsView
+        self.parent.highlight_graphic(self.items, False)
+
+        self.items.clear()
+
+
+class PinItem(QListWidgetItem):
+
+    def __init__(self, pin: str = "Ошибка", parent=None):
+        
+        super().__init__()
+
+        self.parent = parent
+
+        self.status = False
+        self.status_color = self.background()
+
+        self.pin_label = PinLabel(pin, parent)
+
+
+class PinLabel(QLabel):
+
+    def __init__(self, pin, parent):
+        
+        super().__init__()
+
+        with open("src/style/neutral/item_pin.css") as style:
+            self.setStyleSheet(style.read())
+            del style
+
+        self.parent = parent
+
+        self.items = []
+        self.list_items = []
+
+        self.setText(pin)
+        self.setFixedSize(400, 18)
+        self.setObjectName("PinLabel")
+        self.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
+        self.setContentsMargins(0, 0, 3, 0)
+
+    def enterEvent(self, event):
+        pass
+
+    def leaveEvent(self, event):
+        pass

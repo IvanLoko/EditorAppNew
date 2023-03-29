@@ -9,7 +9,7 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, Qt, QSize
+from PyQt5.QtCore import QRect, Qt, QSize, QRectF
 from PyQt5.QtGui import QColor, QPixmap, QPalette
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
@@ -25,7 +25,7 @@ from centralLabel import GraphicsView
 from title_bar import TitleWidget
 from main_bar import MainBar, ImageTab
 from tool_bar import ToolBar
-from side_panel import SidePanel, SB, ElementLabel, ListWidget, ListWidgetItem
+from side_panel import SidePanel, SB, ElementLabel, ListWidget, ListWidgetItem, PinItem
 from info_line import InfoLine
 
 
@@ -43,7 +43,7 @@ class Ui_MainWindow(QMainWindow):
         self.central_widget.setObjectName("centralwidget")
 
         self.setCentralWidget(self.central_widget)
-        self.showFullScreen()
+        self.setGeometry(app.desktop().availableGeometry(1))
 
     def minimize(self):
         self.showMinimized()
@@ -108,14 +108,26 @@ class CentralWidget(QWidget):
                 self.elements_list.clear()
                 for el in self.dict['Elements'].keys():
                     try:
-                        item = ListWidgetItem(el, self.dict['Elements'][el]['Type'])
+                        item = ListWidgetItem(el, self.dict['Elements'][el]['Type'], parent=self)
                     except KeyError:
-                        item = ListWidgetItem(el)
+                        item = ListWidgetItem(el, parent=self)
 
                     item.setText(el)
 
                     self.elements_list.addItem(item)
                     self.elements_list.setItemWidget(item, item.widget)
+
+                    for pin in self.dict['Elements'][el]['Pins'].keys():
+                        try:
+                            pin_item = PinItem(pin, self)
+                        except KeyError:
+                            pin_item = PinItem(parent=self)
+
+                        pin_item.setText(pin)
+
+                        self.elements_list.addItem(pin_item)
+                        self.elements_list.setItemWidget(pin_item, pin_item.pin_label)
+                        pin_item.setHidden(True)
 
                 self.elements_list.setCurrentRow(0)
 
@@ -131,13 +143,54 @@ class CentralWidget(QWidget):
             self.set_line('Project are not loaded', Qt.red)
 
     def next_item(self):
-        self.elements_list.currentItem().setBackground(QColor("#07A707"))
+        element = self.elements_list.currentItem()
+        with open("src/style/neutral/item_el_checked.css") as style:
+            style = style.read()
+            element.el_label.setStyleSheet(style)
+            element.el_type_label.setStyleSheet(style)
+            del style
+        element.status = True
+
         self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
+
+        while isinstance(self.elements_list.currentItem(), PinItem):
+            pin = self.elements_list.currentItem()
+            with open("src/style/neutral/item_pin_checked.css") as style:
+                style = style.read()
+                for item in self.graphics_view.scene().items():
+                    if isinstance(item, SimplePoint) and pin.text() == item.object_name:
+
+                        pin.pin_label.setStyleSheet(style)
+                        pin.status = True
+
+                del style
+
+            self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
+
         if self.elements_list.currentItem() is None:
             raise AttributeError
 
+    def highlight_graphic(self, items, flag):
+        for item in self.graphics_view.scene().items():
+            if type(item) in [SimpleRect, SimplePoint] and item.object_name.split("_")[0] in items:
+                if flag:
+                    item.hovered()
+                else:
+                    item.unhovered()
+
     def elements_list_clicked(self):
-        print(f'item clicked {self.elements_list.currentItem().text()}')
+        # change later
+        flag = False
+        if self.graphics_view.mod == "AI":
+            while isinstance(self.elements_list.currentItem(), PinItem):
+                self.elements_list.setCurrentRow(self.elements_list.currentRow() - 1)
+                flag = True
+
+        for el in self.elements_list.findItems(self.elements_list.currentItem().text(), Qt.MatchStartsWith):
+            if len(el.text().split("_")[0]) == len(self.elements_list.currentItem().text()) and not isinstance(el, ListWidgetItem) and not flag:
+                el.setHidden(not el.isHidden())
+
+        self.set_line(f'{self.elements_list.currentItem().text()} clicked', Qt.darkGreen)
 
     def tab_clicked(self, tab):
         self.sb.hide()
@@ -151,7 +204,6 @@ class CentralWidget(QWidget):
                 self.sb.show()
                 self.side_panel.slider.setSliderPosition(self.sb.opacity.value())
                 return
-
 
     def rewrite(self):
         self_dict = self.dict
@@ -178,7 +230,7 @@ class CentralWidget(QWidget):
                              'B': int(element.rect().bottomRight().y()),
                              'Section': element.object_name}
 
-        with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
+        with open(self.dirlist + '/Контрольные точки/Points', 'w') as ff:
             json.dump(self_dict, ff, indent=1)
         self.set_line(f'File {self.dirlist}/Контрольные точки/Points rewrote', Qt.darkGreen)
 
@@ -203,6 +255,7 @@ class CentralWidget(QWidget):
 
     def mod_AI(self):
         self.graphics_view.mod = 'AI'
+        self.elements_list_clicked()
 
     def mod_STANDARD(self):
         self.graphics_view.mod = 'standard'
@@ -230,8 +283,6 @@ class CentralWidget(QWidget):
         self.info_line.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
-
-
 
 
 if __name__ == "__main__":

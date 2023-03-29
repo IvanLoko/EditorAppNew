@@ -7,6 +7,7 @@ from SimpleObjects import SimpleRect, SimplePoint
 from canvas import Canvas
 import numpy as np
 from errors import *
+from side_panel import PinItem
 
 
 class GraphicsScene(QGraphicsScene):
@@ -16,10 +17,10 @@ class GraphicsScene(QGraphicsScene):
         self.canvas = canvas
         self.pic = QGraphicsPixmapItem()
         pixmap = QPixmap(canvas.path)
-        w = pixmap.width()
-        h = pixmap.height()
-        self.kw = 4800 / w
-        self.kh = 3200 / h
+        self.w = pixmap.width()
+        self.h = pixmap.height()
+        self.kw = 4800 / self.w
+        self.kh = 3200 / self.h
         self.pic.setPixmap(pixmap)
         self.addItem(self.pic)
 
@@ -36,6 +37,11 @@ class GraphicsView(QGraphicsView):
     def __init__(self, parent):
         super().__init__(parent=parent)
 
+        self.setObjectName("GraphicsView")
+        with open("src/style/dark/graphics_view.css") as style:
+            self.setStyleSheet(style.read())
+            del style
+
         self.transform_func = QTransform()
         # Угол поворота колеса мыши
         self.zoom = 0
@@ -47,6 +53,8 @@ class GraphicsView(QGraphicsView):
         # объектов SimpleRect, SimplePoint
         self.mod = 'AI'
         self.points = None
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
     def mousePressEvent(self, event):
         """В режиме standard:
@@ -58,7 +66,7 @@ class GraphicsView(QGraphicsView):
             self.start = self.mapToScene(event.pos())
             super().mousePressEvent(event)
 
-        elif self.mod == 'AI':
+        elif self.mod == 'AI' and type(self.itemAt(event.pos())) == QGraphicsPixmapItem:
             if event.button() == Qt.LeftButton:
                 self.start = self.mapToScene(event.pos())
                 self.finish = self.start
@@ -113,6 +121,9 @@ class GraphicsView(QGraphicsView):
                     return
 
                 try:
+                    # Достать информацию о кол-ве пинов из points для проверки
+                    name = self.parent().elements_list.currentItem().text()
+                    total_points = len(self.parent().dict['Elements'][name]['Pins'].keys())
                     # Поиск пинов
                     dots = self.scene().canvas.pins2json(self.points)
                     # Создание SimpleRect
@@ -120,6 +131,11 @@ class GraphicsView(QGraphicsView):
                     # Создание SimplePoint
                     self.add_points(points=dots)
                     self.parent().next_item()
+
+                    if len(dots) == total_points:
+                        self.parent().set_line(f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points', Qt.darkGreen)
+                    else:
+                        self.parent().set_line(f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points (Wrong element or prediction)', Qt.red)
                 except NonePointError:
                     self.parent().set_line('There is no points in area', Qt.red)
                 except cv2.error:
@@ -160,4 +176,4 @@ class GraphicsView(QGraphicsView):
         """Создание SimplePoint"""
         for num, point in enumerate(points):
             name = f'{self.parent().elements_list.currentItem().text()}_{num + 1}'
-            self.scene().addItem(SimplePoint(point, object_name=name))
+            self.scene().addItem(SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status))
