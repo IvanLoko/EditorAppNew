@@ -1,14 +1,12 @@
 #ItemWidgetEl {
-    color: #BBBBBB;
+    color: rgb(200, 200, 200);
     font-size: 9pt;
-    border: 1px solid #727272;
-    border-right: 0px;
-    border-left: 0px;
+    border: 0px solid;
 }
 
 #ItemWidgetElType {
-    color: #BBBBBB;
+    color: rgb(200, 200, 200);
     font-size: 8pt;
-    border: 1px solid #727272;
-    border-right: 0px;
+    border: 0px solid;
+    border-left: 1px solid rgb(75, 75, 75);
 }

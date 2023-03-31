@@ -10,10 +10,10 @@
 import glob
 
 from PyQt5.QtCore import QRect, Qt, QSize, QRectF
-from PyQt5.QtGui import QColor, QPixmap, QPalette
+from PyQt5.QtGui import QColor, QPixmap, QPalette, QIcon
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsPixmapItem
+    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsPixmapItem, QListView
 import json
 
 from canvas import Canvas
@@ -43,13 +43,15 @@ class Ui_MainWindow(QMainWindow):
         self.central_widget.setObjectName("centralwidget")
 
         self.setCentralWidget(self.central_widget)
-        self.setGeometry(app.desktop().availableGeometry(1))
+        self.setGeometry(app.desktop().availableGeometry(0))
+        self.setWindowIcon(QIcon("src/icons/TestLogo.png"))
+        self.showFullScreen()
 
     def minimize(self):
         self.showMinimized()
 
     def maximize(self):
-        self.showMaximized()
+        self.showFullScreen()
         self.central_widget.title_bar.MaxButton.setVisible(False)
         self.central_widget.title_bar.RestoreButton.setVisible(True)
 
@@ -74,7 +76,7 @@ class CentralWidget(QWidget):
         self.dirlist = None
         self.setupUI()
         self.graphics_view = GraphicsView(self)
-        self.graphics_view.setGeometry(60, 60, 1520-60, 1050-60)
+        self.graphics_view.setGeometry(50, 65, 1920-300-50, 1080-30-65)
 
         self.image_tabs = []
         self.tab = None
@@ -90,6 +92,8 @@ class CentralWidget(QWidget):
             try:
                 with open(self.dirlist + r'/Контрольные точки/Points', 'r') as ff:
                     self.dict = json.loads(ff.read(), strict=False)
+                    self.title_bar.project_name.setText(f"{self.dirlist.split('/')[-1]}  -  Editor App")
+                    self.parent().setWindowTitle(self.dirlist.split('/')[-1])
             except FileNotFoundError:
                 message = QMessageBox()
                 message.setText('Файл Points не найден,\n найти вручную?')
@@ -119,7 +123,7 @@ class CentralWidget(QWidget):
 
                     for pin in self.dict['Elements'][el]['Pins'].keys():
                         try:
-                            pin_item = PinItem(pin, self)
+                            pin_item = PinItem(f'|-{pin}', self)  # Temp solution
                         except KeyError:
                             pin_item = PinItem(parent=self)
 
@@ -130,6 +134,7 @@ class CentralWidget(QWidget):
                         pin_item.setHidden(True)
 
                 self.elements_list.setCurrentRow(0)
+                self.elements_list_clicked()
 
             for file in glob.glob(self.dirlist + r'\Виды\*'):
                 self.create_scene(file)
@@ -169,6 +174,7 @@ class CentralWidget(QWidget):
 
         if self.elements_list.currentItem() is None:
             raise AttributeError
+        self.elements_list_clicked()
 
     def highlight_graphic(self, items, flag):
         for item in self.graphics_view.scene().items():
@@ -179,18 +185,23 @@ class CentralWidget(QWidget):
                     item.unhovered()
 
     def elements_list_clicked(self):
-        # change later
-        flag = False
-        if self.graphics_view.mod == "AI":
+        if self.graphics_view.mod == "AI" and type(self.elements_list.currentItem()) == PinItem:
             while isinstance(self.elements_list.currentItem(), PinItem):
                 self.elements_list.setCurrentRow(self.elements_list.currentRow() - 1)
-                flag = True
+            self.set_line("Can't place pins in AI mode", Qt.darkYellow)
+            return
 
-        for el in self.elements_list.findItems(self.elements_list.currentItem().text(), Qt.MatchStartsWith):
-            if len(el.text().split("_")[0]) == len(self.elements_list.currentItem().text()) and not isinstance(el, ListWidgetItem) and not flag:
-                el.setHidden(not el.isHidden())
+        if isinstance(self.elements_list.currentItem(), ListWidgetItem):
+            self.hide_subs()
+
+            for el in self.elements_list.findItems(self.elements_list.currentItem().text(), Qt.MatchStartsWith):
+                if el.text().split("_")[0] == self.elements_list.currentItem().text() and type(el) != ListWidgetItem:
+                    el.setHidden(False)
 
         self.set_line(f'{self.elements_list.currentItem().text()} clicked', Qt.darkGreen)
+
+    def hide_subs(self):
+        [el.setHidden(True) for el in self.elements_list.findItems("", Qt.MatchStartsWith) if isinstance(el, PinItem)]
 
     def tab_clicked(self, tab):
         self.sb.hide()
@@ -237,7 +248,7 @@ class CentralWidget(QWidget):
     def create_tab(self, name="Empty"):
         self.tab = ImageTab(self)
         self.tab.setText(name)
-        self.main_bar.image_line_layout.addWidget(self.tab)
+        self.main_bar.layout.addWidget(self.tab)
 
     def create_scene(self, path):
         canvas = Canvas(path, model=model)
@@ -262,10 +273,10 @@ class CentralWidget(QWidget):
 
     def setupUI(self):
         self.tool_bar = ToolBar(self)
-        self.tool_bar.move(0, 60)
+        self.tool_bar.move(0, 30)
 
         self.side_panel = SidePanel(self)
-        self.side_panel.move(1520, 30)
+        self.side_panel.setGeometry(1620, 30, 300, 1050)
 
         self.title_bar = TitleWidget(self)
         self.title_bar.setGeometry(0, 0, 1920, 30)
@@ -274,9 +285,8 @@ class CentralWidget(QWidget):
         self.title_bar.RestoreButton.clicked.connect(self.parent().restore)
         self.title_bar.CloseButton.clicked.connect(self.parent().close)
 
-
         self.main_bar = MainBar(self)
-        self.main_bar.setGeometry(0, 30, 1520, 30)
+        self.main_bar.setGeometry(50, 30, 1920-300-50, 35)
 
         self.info_line = InfoLine(self)
         self.info_line.setGeometry(0, 1050, 1920, 30)

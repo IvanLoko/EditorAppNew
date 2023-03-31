@@ -1,17 +1,17 @@
 from PyQt5.QtCore import Qt, QSize, QPointF, pyqtSignal, QRectF
 from PyQt5.QtGui import QCursor, QPixmap, QIcon, QFont, QColor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QHBoxLayout, QSlider, QListWidgetItem, QCheckBox, QFileDialog, QGraphicsPixmapItem, QGraphicsObject
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QHBoxLayout, QSlider, QListWidgetItem, QCheckBox, QFileDialog, QGraphicsPixmapItem, QGraphicsObject, QListView
 
 
-class SidePanel(QWidget):
+class SidePanel(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self.setFixedSize(400, 1020)
+        self.setFixedSize(300, 1020)
         self.setObjectName("SidePanel")
 
         self.slider = Slider(self.parent())
-        self.slider.move(1786, 975)
+        self.slider.move(1806, 975)
 
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -48,10 +48,11 @@ class ListWidget(QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self.setFixedSize(400, 630)
+        self.setFixedSize(300, 615)
         self.setObjectName("ElementList")
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setAutoScroll(False)
 
 
 class ElementLabel(QLabel):
@@ -64,9 +65,8 @@ class ElementLabel(QLabel):
 
     def setupUI(self):
 
-        self.setFixedSize(400, 240)
+        self.setFixedSize(300, 240)
         self.setAlignment(Qt.AlignCenter)
-        self.setText("None")
         self.setObjectName("ElementLabel")
 
 
@@ -87,7 +87,7 @@ class SB(QLabel):
 
     def setupUI(self):
 
-        self.setFixedSize(400, 60)
+        self.setFixedSize(300, 60)
         self.setObjectName("SB")
 
         layout = QHBoxLayout()
@@ -101,13 +101,16 @@ class SB(QLabel):
 
         self.SB_load = QPushButton()
         self.SB_load.setObjectName("SBLoad")
-        self.SB_load.setFixedSize(180, 30)
+        self.SB_load.setFixedSize(100, 30)
         self.SB_load.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.SB_load.clicked.connect(self.sbLoad)
 
-        icon = QLabel(self.SB_load)
+        icon = QPushButton(self.SB_load)
+        icon.setObjectName("SBLoadIcon")
         icon.setGeometry(5, 5, 20, 20)
-        icon.setPixmap(QPixmap("src/icons/dark/load.png").scaled(20, 20))
+        icon.setIcon(QIcon("src/icons/dark/new_dark/SBLoad.png"))
+        icon.setIconSize(QSize(20, 20))
+        icon.clicked.connect(self.sbLoad)
 
         self.img = QLabel(self.SB_load)
         self.img.setObjectName("SBName")
@@ -228,7 +231,7 @@ class SectionLabel(QLabel):
         super().__init__(parent=parent)
 
         self.setText(name)
-        self.setFixedSize(400, 30)
+        self.setFixedSize(300, 35)
         self.setAlignment(Qt.AlignCenter)
         self.setObjectName("SectionLabel")
 
@@ -263,7 +266,8 @@ class ListWidgetItem(QListWidgetItem):
         super().__init__()
 
         self.widget = QWidget()
-        self.widget.setFixedSize(400, 18)
+        self.widget.setFixedSize(300, 20)
+        self.setSizeHint(QSize(300, 20))
 
         self.status = False
         self.status_color = self.background()
@@ -274,8 +278,10 @@ class ListWidgetItem(QListWidgetItem):
         layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.el_label = ELLabel(el, parent)
+        self.el_label.setFixedSize(100, 20)
 
         self.el_type_label = ELTypeLabel(el_type, parent)
+        self.el_type_label.setFixedSize(200, 20)
 
         layout.addWidget(self.el_label)
         layout.addWidget(self.el_type_label)
@@ -295,11 +301,7 @@ class ELLabel(QLabel):
 
         self.parent = parent
 
-        self.items = []
-        self.list_items = []
-
         self.setText(el)
-        self.setFixedSize(100, 18)
         self.setObjectName("ItemWidgetEl")
         self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.setContentsMargins(3, 0, 0, 0)
@@ -307,28 +309,20 @@ class ELLabel(QLabel):
     def enterEvent(self, event):
         """ Подсветить элемент, если он находится на текущей сцене """
 
-        for qitem in self.parent.elements_list.findItems(self.text(), Qt.MatchExactly):
-            if qitem.status:
-                qitem.setBackground(QColor("#7AA5C2"))
-            else:
-                qitem.setBackground(QColor("#3661A0"))
+        qitem = self.parent.elements_list.findItems(self.text(), Qt.MatchExactly)[0]
+        if qitem.status:
+            qitem.setBackground(QColor("#7AA5C2"))
+        else:
+            qitem.setBackground(QColor("#3661A0"))
 
-                self.list_items.append(qitem)
-
-        for el in self.list_items:
-            self.items.append(el.text())
-
-        self.parent.highlight_graphic(self.items, True)
+        self.parent.highlight_graphic([qitem.text()], True)
 
     def leaveEvent(self, event):
         """ Отмена подсветки """
-        for qitem in self.list_items:
-            qitem.setBackground(qitem.status_color)
+        qitem = self.parent.elements_list.findItems(self.text(), Qt.MatchExactly)[0]
+        qitem.setBackground(qitem.status_color)
 
-        self.parent.highlight_graphic(self.items, False)
-
-        self.items.clear()
-        self.list_items.clear()
+        self.parent.highlight_graphic([qitem.text()], False)
 
 
 class ELTypeLabel(QLabel):
@@ -346,7 +340,6 @@ class ELTypeLabel(QLabel):
         self.items = []
 
         self.setText(el_type)
-        self.setFixedSize(300, 18)
         self.setObjectName("ItemWidgetElType")
         self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.setContentsMargins(3, 0, 0, 0)
@@ -399,7 +392,10 @@ class PinItem(QListWidgetItem):
         self.status = False
         self.status_color = self.background()
 
+        self.setSizeHint(QSize(300, 15))
+
         self.pin_label = PinLabel(pin, parent)
+        self.pin_label.setFixedSize(300, 15)
 
 
 class PinLabel(QLabel):
@@ -418,10 +414,9 @@ class PinLabel(QLabel):
         self.list_items = []
 
         self.setText(pin)
-        self.setFixedSize(400, 18)
         self.setObjectName("PinLabel")
-        self.setAlignment(Qt.AlignVCenter | Qt.AlignRight)
-        self.setContentsMargins(0, 0, 3, 0)
+        self.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self.setContentsMargins(20, 0, 0, 0)
 
     def enterEvent(self, event):
         pass

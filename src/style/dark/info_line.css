@@ -1,5 +1,5 @@
 #InfoLine {
-    border: 3px solid #646464;
-    background-color: #323232;
+    border-top: 1px solid rgb(200, 200, 200);
+    background-color: rgb(40, 40, 40);
     font-size: 8pt;
 }
