@@ -9,11 +9,11 @@
 
 import glob
 
-from PyQt5.QtCore import QRect, Qt, QSize
-from PyQt5.QtGui import QColor, QPixmap, QPalette
+from PyQt5.QtCore import QRect, Qt, QSize, QRectF
+from PyQt5.QtGui import QColor, QPixmap, QPalette, QIcon
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLabel, QMainWindow, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QMessageBox, \
-    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsPixmapItem
+    QPushButton, QFileDialog, QApplication, QHBoxLayout, QGraphicsPixmapItem, QListView
 import json
 
 from canvas import Canvas
@@ -25,7 +25,7 @@ from centralLabel import GraphicsView
 from title_bar import TitleWidget
 from main_bar import MainBar, ImageTab
 from tool_bar import ToolBar
-from side_panel import SidePanel, SB, ElementLabel, ListWidget, ListWidgetItem
+from side_panel import SidePanel, SB, ElementLabel, ListWidget, ListWidgetItem, PinItem
 from info_line import InfoLine
 
 
@@ -43,13 +43,15 @@ class Ui_MainWindow(QMainWindow):
         self.central_widget.setObjectName("centralwidget")
 
         self.setCentralWidget(self.central_widget)
+        self.setGeometry(app.desktop().availableGeometry(0))
+        self.setWindowIcon(QIcon("src/icons/TestLogo.png"))
         self.showFullScreen()
 
     def minimize(self):
         self.showMinimized()
 
     def maximize(self):
-        self.showMaximized()
+        self.showFullScreen()
         self.central_widget.title_bar.MaxButton.setVisible(False)
         self.central_widget.title_bar.RestoreButton.setVisible(True)
 
@@ -74,7 +76,7 @@ class CentralWidget(QWidget):
         self.dirlist = None
         self.setupUI()
         self.graphics_view = GraphicsView(self)
-        self.graphics_view.setGeometry(60, 60, 1520-60, 1050-60)
+        self.graphics_view.setGeometry(50, 65, 1920-300-50, 1080-30-65)
 
         self.image_tabs = []
         self.tab = None
@@ -90,6 +92,8 @@ class CentralWidget(QWidget):
             try:
                 with open(self.dirlist + r'/Контрольные точки/Points', 'r') as ff:
                     self.dict = json.loads(ff.read(), strict=False)
+                    self.title_bar.project_name.setText(f"{self.dirlist.split('/')[-1]}  -  Editor App")
+                    self.parent().setWindowTitle(self.dirlist.split('/')[-1])
             except FileNotFoundError:
                 message = QMessageBox()
                 message.setText('Файл Points не найден,\n найти вручную?')
@@ -108,16 +112,29 @@ class CentralWidget(QWidget):
                 self.elements_list.clear()
                 for el in self.dict['Elements'].keys():
                     try:
-                        item = ListWidgetItem(el, self.dict['Elements'][el]['Type'])
+                        item = ListWidgetItem(el, self.dict['Elements'][el]['Type'], parent=self)
                     except KeyError:
-                        item = ListWidgetItem(el)
+                        item = ListWidgetItem(el, parent=self)
 
                     item.setText(el)
 
                     self.elements_list.addItem(item)
                     self.elements_list.setItemWidget(item, item.widget)
 
+                    for pin in self.dict['Elements'][el]['Pins'].keys():
+                        try:
+                            pin_item = PinItem(f'|-{pin}', self)  # Temp solution
+                        except KeyError:
+                            pin_item = PinItem(parent=self)
+
+                        pin_item.setText(pin)
+
+                        self.elements_list.addItem(pin_item)
+                        self.elements_list.setItemWidget(pin_item, pin_item.pin_label)
+                        pin_item.setHidden(True)
+
                 self.elements_list.setCurrentRow(0)
+                self.elements_list_clicked()
 
             for file in glob.glob(self.dirlist + r'\Виды\*'):
                 self.create_scene(file)
@@ -131,13 +148,60 @@ class CentralWidget(QWidget):
             self.set_line('Project are not loaded', Qt.red)
 
     def next_item(self):
-        self.elements_list.currentItem().setBackground(QColor("#07A707"))
+        element = self.elements_list.currentItem()
+        with open("src/style/neutral/item_el_checked.css") as style:
+            style = style.read()
+            element.el_label.setStyleSheet(style)
+            element.el_type_label.setStyleSheet(style)
+            del style
+        element.status = True
+
         self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
+
+        while isinstance(self.elements_list.currentItem(), PinItem):
+            pin = self.elements_list.currentItem()
+            with open("src/style/neutral/item_pin_checked.css") as style:
+                style = style.read()
+                for item in self.graphics_view.scene().items():
+                    if isinstance(item, SimplePoint) and pin.text() == item.object_name:
+
+                        pin.pin_label.setStyleSheet(style)
+                        pin.status = True
+
+                del style
+
+            self.elements_list.setCurrentRow(self.elements_list.currentRow() + 1)
+
         if self.elements_list.currentItem() is None:
             raise AttributeError
+        self.elements_list_clicked()
+
+    def highlight_graphic(self, items, flag):
+        for item in self.graphics_view.scene().items():
+            if type(item) in [SimpleRect, SimplePoint] and item.object_name.split("_")[0] in items:
+                if flag:
+                    item.hovered()
+                else:
+                    item.unhovered()
 
     def elements_list_clicked(self):
-        print(f'item clicked {self.elements_list.currentItem().text()}')
+        if self.graphics_view.mod == "AI" and type(self.elements_list.currentItem()) == PinItem:
+            while isinstance(self.elements_list.currentItem(), PinItem):
+                self.elements_list.setCurrentRow(self.elements_list.currentRow() - 1)
+            self.set_line("Can't place pins in AI mode", Qt.darkYellow)
+            return
+
+        if isinstance(self.elements_list.currentItem(), ListWidgetItem):
+            self.hide_subs()
+
+            for el in self.elements_list.findItems(self.elements_list.currentItem().text(), Qt.MatchStartsWith):
+                if el.text().split("_")[0] == self.elements_list.currentItem().text() and type(el) != ListWidgetItem:
+                    el.setHidden(False)
+
+        self.set_line(f'{self.elements_list.currentItem().text()} clicked', Qt.darkGreen)
+
+    def hide_subs(self):
+        [el.setHidden(True) for el in self.elements_list.findItems("", Qt.MatchStartsWith) if isinstance(el, PinItem)]
 
     def tab_clicked(self, tab):
         self.sb.hide()
@@ -151,7 +215,6 @@ class CentralWidget(QWidget):
                 self.sb.show()
                 self.side_panel.slider.setSliderPosition(self.sb.opacity.value())
                 return
-
 
     def rewrite(self):
         self_dict = self.dict
@@ -178,14 +241,14 @@ class CentralWidget(QWidget):
                              'B': int(element.rect().bottomRight().y()),
                              'Section': element.object_name}
 
-        with open(self.dirlist + r'/Контрольные точки/Points', 'w') as ff:
+        with open(self.dirlist + '/Контрольные точки/Points', 'w') as ff:
             json.dump(self_dict, ff, indent=1)
         self.set_line(f'File {self.dirlist}/Контрольные точки/Points rewrote', Qt.darkGreen)
 
     def create_tab(self, name="Empty"):
         self.tab = ImageTab(self)
         self.tab.setText(name)
-        self.main_bar.image_line_layout.addWidget(self.tab)
+        self.main_bar.layout.addWidget(self.tab)
 
     def create_scene(self, path):
         canvas = Canvas(path, model=model)
@@ -203,16 +266,17 @@ class CentralWidget(QWidget):
 
     def mod_AI(self):
         self.graphics_view.mod = 'AI'
+        self.elements_list_clicked()
 
     def mod_STANDARD(self):
         self.graphics_view.mod = 'standard'
 
     def setupUI(self):
         self.tool_bar = ToolBar(self)
-        self.tool_bar.move(0, 60)
+        self.tool_bar.move(0, 30)
 
         self.side_panel = SidePanel(self)
-        self.side_panel.move(1520, 30)
+        self.side_panel.setGeometry(1620, 30, 300, 1050)
 
         self.title_bar = TitleWidget(self)
         self.title_bar.setGeometry(0, 0, 1920, 30)
@@ -221,17 +285,14 @@ class CentralWidget(QWidget):
         self.title_bar.RestoreButton.clicked.connect(self.parent().restore)
         self.title_bar.CloseButton.clicked.connect(self.parent().close)
 
-
         self.main_bar = MainBar(self)
-        self.main_bar.setGeometry(0, 30, 1520, 30)
+        self.main_bar.setGeometry(50, 30, 1920-300-50, 35)
 
         self.info_line = InfoLine(self)
         self.info_line.setGeometry(0, 1050, 1920, 30)
         self.info_line.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
-
-
 
 
 if __name__ == "__main__":

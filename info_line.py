@@ -18,5 +18,6 @@ class InfoLine(QTextEdit):
             del style
 
         self.setText("Hellow!")
+        self.setReadOnly(True)
 
         self.setFixedSize(1920, 30)

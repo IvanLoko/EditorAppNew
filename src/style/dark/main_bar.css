@@ -1,34 +1,12 @@
-#Load {
-    border: 1px solid #727272;
-    background-color: #565656;
-}
-
-#Load:hover {
-    background-color: #666666;
-}
-
-#Rewrite {
-    border: 1px solid #727272;
-    background-color: #565656;
-}
-
-#Rewrite:hover {
-    background-color: #666666;
-}
-
-#ImageLine {
-    border: 1px solid #727272;
-    border-left: 0px;
-    background-color: #424242;
+#MainBar {
+    background-color: rgb(45, 45, 45);
+    border-bottom: 1px solid rgb(200, 200, 200);
 }
 
 #ImageTab {
-    color: #AEE8F5;
-    border: 1px solid #727272;
-    background-color: #484848;
+    color: rgb(160, 160, 160);
+    border: 0px;
+    border-bottom: 1px solid rgb(200, 200, 200);
+    background-color: rgb(60, 60, 60);
     font-size: 8pt;
-}
-
-#ImageTab:hover {
-    background-color: #666666;
 }

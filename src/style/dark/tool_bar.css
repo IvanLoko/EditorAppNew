@@ -1,13 +1,39 @@
 #ToolBar {
-    background-color: #646464;
-    border: 1px solid #727272;
+    background-color: rgb(70, 70, 70);
+    border-right: 1px solid rgb(200, 200, 200);
 }
 
-QPushButton {
-    border: 1px solid #969696;
-    border-radius: 5px;
+#StartSectionButton {
+    color: rgb(140, 140, 140);
+    border: 0px;
+    border-top: 1px solid rgb(200, 200, 200);
 }
 
-QPushButton:hover {
-     background-color: #848484;
+#StartSectionButton:hover {
+    color: rgb(240, 240, 240);
+    border: 0px;
+    border-top: 1px solid rgb(200, 200, 200);
+    border-left: 3px solid rgb(255, 255, 255);
+}
+
+#StartSectionButtonClicked {
+    border: 0px;
+    border-left: 3px solid rgb(240, 240, 240);
+    border-top: 1px solid rgb(200, 200, 200);
+}
+
+#SectionButton {
+    border: 0px;
+    color: rgb(140, 140, 140);
+}
+
+#SectionButton:hover {
+    color: rgb(240, 240, 240);
+    border: 0px;
+    border-left: 3px solid rgb(255, 255, 255);
+}
+
+#SectionButtonClicked {
+    border: 0px;
+    border-left: 3px solid rgb(240, 240, 240);
 }
