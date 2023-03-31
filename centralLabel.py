@@ -1,26 +1,30 @@
 import cv2
-from PyQt5.QtCore import QRect, Qt, QEvent, QPoint
-from PyQt5.QtGui import QPainter, QPixmap, QBrush, QPen, QTransform, QColor
-from PyQt5.QtWidgets import QLabel, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsRectItem
+from PyQt5.QtCore import Qt, QPoint, pyqtSignal
+from PyQt5.QtGui import QPixmap, QBrush, QPen, QTransform, QColor
+from PyQt5.QtWidgets import QLabel, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsRectItem, \
+    QGraphicsItem
 
 from SimpleObjects import SimpleRect, SimplePoint
 from canvas import Canvas
 import numpy as np
 from errors import *
-from side_panel import PinItem
 
 
 class GraphicsScene(QGraphicsScene):
     """Интерактивная область для разметки и работы с элементами на отдельном фото ОД"""
+    itemClicked = pyqtSignal(QGraphicsItem)
+    itemMoved = pyqtSignal(list)
+
     def __init__(self, parent, canvas: Canvas):
         super().__init__(parent=parent)
+
         self.canvas = canvas
         self.pic = QGraphicsPixmapItem()
         pixmap = QPixmap(canvas.path)
-        self.w = pixmap.width()
-        self.h = pixmap.height()
-        self.kw = 4800 / self.w
-        self.kh = 3200 / self.h
+        w = pixmap.width()
+        h = pixmap.height()
+        self.kw = 4800 / w
+        self.kh = 3200 / h
         self.pic.setPixmap(pixmap)
         self.addItem(self.pic)
 
@@ -40,7 +44,6 @@ class GraphicsView(QGraphicsView):
         self.setObjectName("GraphicsView")
         with open("src/style/dark/graphics_view.css") as style:
             self.setStyleSheet(style.read())
-            del style
 
         self.transform_func = QTransform()
         # Угол поворота колеса мыши
@@ -64,14 +67,13 @@ class GraphicsView(QGraphicsView):
 
         if self.mod == 'standard':
             self.start = self.mapToScene(event.pos())
-            super().mousePressEvent(event)
 
         elif self.mod == 'AI' and type(self.itemAt(event.pos())) == QGraphicsPixmapItem:
             if event.button() == Qt.LeftButton:
                 self.start = self.mapToScene(event.pos())
                 self.finish = self.start
                 self.update()
-        super().mouseMoveEvent(event)
+        super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         """Правая кнопка мыши Всегда отвечает за перемеения по фото, внезависимости от выбранного мода
@@ -133,9 +135,13 @@ class GraphicsView(QGraphicsView):
                     self.parent().next_item()
 
                     if len(dots) == total_points:
-                        self.parent().set_line(f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points', Qt.darkGreen)
+                        self.parent().set_line(
+                            f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points',
+                            Qt.darkGreen)
                     else:
-                        self.parent().set_line(f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points (Wrong element or prediction)', Qt.red)
+                        self.parent().set_line(
+                            f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points (Wrong element or prediction)',
+                            Qt.red)
                 except NonePointError:
                     self.parent().set_line('There is no points in area', Qt.red)
                 except cv2.error:
@@ -144,7 +150,8 @@ class GraphicsView(QGraphicsView):
                     # IndexError = index 0 is out of bounds for axis 0 with size 0)
                     self.parent().set_line('smth wrong but idk what', Qt.red)
                 except TypeError:
-                    self.parent().set_line('(x_start <= x_finish or y_start <= y_finish) == True,  vpadlu fixitj :)', Qt.red)
+                    self.parent().set_line('(x_start <= x_finish or y_start <= y_finish) == True,  vpadlu fixitj :)',
+                                           Qt.red)
                 except AttributeError:
                     self.parent().set_line('Set element in element list', Qt.darkYellow)
 
@@ -176,4 +183,5 @@ class GraphicsView(QGraphicsView):
         """Создание SimplePoint"""
         for num, point in enumerate(points):
             name = f'{self.parent().elements_list.currentItem().text()}_{num + 1}'
-            self.scene().addItem(SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status))
+            self.scene().addItem(
+                SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status))

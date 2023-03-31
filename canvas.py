@@ -104,15 +104,10 @@ class Canvas:
             # # Алгоритм удаления "наложившихся" точек. Если площади прямоугольников пересекаются, одна из них удаляется
             num = 1
             while num < len(rectangles):
-                print(rectangles[num, 1], rectangles[num - 1, 1], width_rectangle * 1.1)
                 if abs(rectangles[num, 1] - rectangles[num - 1, 1]) < width_rectangle * 1.1:
                     if rectangles[num - 1, 0] == rectangles[num, 0]:
                         rectangles = np.delete(rectangles, num, axis=0)
                         num -= 1
-                        # row = [rectangles[num-1, 0],
-                        #        int((rectangles[num, 1] + rectangles[num - 1, 1]) / 2)]
-                        # rectangles = np.delete(rectangles, (num - 1, num), axis=0)
-                        # rectangles = np.insert(rectangles, num-1, row, axis=0)
 
                 num += 1
 
