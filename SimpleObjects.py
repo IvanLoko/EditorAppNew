@@ -14,6 +14,13 @@ class MiniGraphicsView(QGraphicsView):
         pass
 
 
+class MiniGraphScene(QGraphicsScene):
+    itemMoved = pyqtSignal(dict)
+
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+
+
 class SimpleRect(QGraphicsRectItem):
     """Обозначение корпуса микросхемы"""
 
@@ -140,7 +147,7 @@ class SimpleRect(QGraphicsRectItem):
             self.setPos(QPointF(upd_x, upd_y))
 
     def mouseReleaseEvent(self, event):
-        pass
+        self.scene().parent().parent().itemClicked(self)
 
 
 class SimplePoint(QGraphicsRectItem):
@@ -210,21 +217,25 @@ class SimplePoint(QGraphicsRectItem):
 
     def mouseMoveEvent(self, event):
         """Перемещение объекта по сцене"""
+        if self.scene().parent().mod == 'standard':
+            pos = event.lastScenePos()
+            upd_pos = event.scenePos()
 
-        pos = event.lastScenePos()
-        upd_pos = event.scenePos()
+            orig_pos = self.scenePos()
 
-        orig_pos = self.scenePos()
-
-        upd_x = upd_pos.x() - pos.x() + orig_pos.x()
-        upd_y = upd_pos.y() - pos.y() + orig_pos.y()
-        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
-        self.hoverEnterEvent(QGraphicsSceneHoverEvent)
-
-        self.setPos(QPointF(upd_x, upd_y))
+            upd_x = upd_pos.x() - pos.x() + orig_pos.x()
+            upd_y = upd_pos.y() - pos.y() + orig_pos.y()
+            [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+            self.hoverEnterEvent(QGraphicsSceneHoverEvent)
+            self.scene().itemMoved.emit({'delta_x': upd_pos.x() - pos.x(),
+                                         'delta_y': upd_pos.y() - pos.y(),
+                                         'object_name': self.object_name,
+                                         'source': self.scene().parent().objectName()})
+            self.setPos(QPointF(upd_x, upd_y))
 
     def mouseReleaseEvent(self, event):
         pass
+
 
 
 class MiniSimplePoint(SimplePoint):

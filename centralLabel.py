@@ -13,7 +13,7 @@ from errors import *
 class GraphicsScene(QGraphicsScene):
     """Интерактивная область для разметки и работы с элементами на отдельном фото ОД"""
     itemClicked = pyqtSignal(QGraphicsItem)
-    itemMoved = pyqtSignal(list)
+    itemMoved = pyqtSignal(dict)
 
     def __init__(self, parent, canvas: Canvas):
         super().__init__(parent=parent)
@@ -85,8 +85,6 @@ class GraphicsView(QGraphicsView):
         if event.buttons() == Qt.RightButton:
             self.transform_func.translate(-event.pos().x(), -event.pos().y())
             self.setTransform(self.transform_func)
-        elif event.buttons() == Qt.LeftButton and self.mod == 'standard':
-            super().mouseMoveEvent(event)
 
         elif event.buttons() == Qt.LeftButton and self.mod == 'AI':
             if not self.start.isNull() and not self.finish.isNull():
@@ -157,6 +155,8 @@ class GraphicsView(QGraphicsView):
 
             self.start = QPoint()
             self.finish = QPoint()
+        print('sssss_')
+        super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event) -> None:
         """Мастабирование с помощью колеса мыши внезависимости от режима"""

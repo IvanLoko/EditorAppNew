@@ -25,14 +25,14 @@ import json
 
 from canvas import Canvas
 from centralLabel import GraphicsScene
-from SimpleObjects import SimplePoint, SimpleRect, MiniGraphicsView, MiniSimplePoint
+from SimpleObjects import SimplePoint, SimpleRect, MiniGraphicsView, MiniSimplePoint, MiniGraphScene
 from model import build_model
 from centralLabel import GraphicsView
 
 from title_bar import TitleWidget
 from main_bar import MainBar, ImageTab
 from tool_bar import ToolBar
-from side_panel import SidePanel, SB, ElementLabel, ListWidget, ListWidgetItem, PinItem
+from side_panel import SidePanel, SB, ListWidget, ListWidgetItem, PinItem
 from info_line import InfoLine
 
 
@@ -80,6 +80,7 @@ class CentralWidget(QWidget):
         self.dict = None
         self.elements_list = ListWidget(self)
         self.circuit_map = MiniGraphicsView(self)
+        self.circuit_map.setObjectName('dickkurat')
 
         self.circuit_map.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.circuit_map.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -87,6 +88,7 @@ class CentralWidget(QWidget):
         self.dirlist = None
         self.setupUI()
         self.graphics_view = GraphicsView(self)
+        self.graphics_view.setObjectName('MainView')
         self.graphics_view.setGeometry(50, 65, 1920-300-50, 1080-30-65)
 
         self.image_tabs = []
@@ -94,41 +96,6 @@ class CentralWidget(QWidget):
         self.sb = None
 
         self.load_project()
-
-    def itemClicked(self, item):
-
-        pos_rect = item.mapRectToScene(item.rect())
-        if pos_rect.x() < 0 or pos_rect.y() < 0:
-            self.set_line('Wrong position of element', Qt.Red)
-            return
-
-        y = int(pos_rect.x())
-        x = int(pos_rect.y())
-        y1 = int(pos_rect.x() + pos_rect.width())
-        x1 = int(pos_rect.y() + pos_rect.height())
-
-        img = Canvas.read_image(self.graphics_view.scene().canvas.path)
-
-        cut_image = img[x: x1, y: y1]
-        height, width, _ = cut_image.shape
-        cut_image = QImage(bytes(cut_image), width, height, width * 3, QImage.Format_RGB888)
-        scene = QGraphicsScene()
-        pic = QGraphicsPixmapItem()
-        pic.setPixmap(QPixmap.fromImage(cut_image).scaled(self.circuit_map.size()))
-        scene.addItem(pic)
-
-        self.circuit_map.setScene(scene)
-
-        kx = self.circuit_map.size().width() / width
-        ky = self.circuit_map.size().height() / height
-
-        points = [item for item in self.graphics_view.scene().items(pos_rect) if isinstance(item, SimplePoint)]
-        for point in points:
-            pos_point = point.mapRectToScene(point.rect())
-            x = (pos_point.x() - pos_rect.x()) * 4 * kx
-            y = (pos_point.y() - pos_rect.y()) * 4 * ky
-            rect = MiniSimplePoint((x, y), object_name=point.object_name)
-            self.circuit_map.scene().addItem(rect)
 
     def load_project(self):
 
@@ -307,8 +274,64 @@ class CentralWidget(QWidget):
         scene = GraphicsScene(self.graphics_view, canvas)
         scene.setObjectName(path.split('\\')[-1])
         scene.itemClicked.connect(self.itemClicked)
+        scene.itemMoved.connect(self.sim_moved)
 
         self.graphics_view.setScene(scene)
+
+    def sim_moved(self, data):
+        if self.circuit_map.scene() is not None:
+            if self.graphics_view.objectName() != data['source']:
+                graph = self.graphics_view
+                kx, ky = 1/self.kx, 1/self.ky
+            else:
+                graph = self.circuit_map
+                kx, ky = self.kx, self.ky
+
+            for item in graph.scene().items():
+                if isinstance(item, SimplePoint):
+                    if item.object_name == data['object_name']:
+                        point = item
+                        break
+
+            point.setPos(point.scenePos().x() + data['delta_x'] * kx, point.scenePos().y() + data['delta_y'] * ky)
+
+    def itemClicked(self, item):
+
+        pos_rect = item.mapRectToScene(item.rect())
+        if pos_rect.x() < 0 or pos_rect.y() < 0:
+            self.set_line('Wrong position of element', Qt.Red)
+            return
+
+        y = int(pos_rect.x())
+        x = int(pos_rect.y())
+        y1 = int(pos_rect.x() + pos_rect.width())
+        x1 = int(pos_rect.y() + pos_rect.height())
+
+        img = Canvas.read_image(self.graphics_view.scene().canvas.path)
+
+        cut_image = img[x: x1, y: y1]
+        height, width, _ = cut_image.shape
+        cut_image = QImage(bytes(cut_image), width, height, width * 3, QImage.Format_RGB888)
+        scene = MiniGraphScene(self.circuit_map)
+        scene.itemMoved.connect(self.sim_moved)
+        pic = QGraphicsPixmapItem()
+        pic.setPixmap(QPixmap.fromImage(cut_image).scaled(self.circuit_map.size()))
+        scene.addItem(pic)
+
+        self.circuit_map.setScene(scene)
+
+        self.kx = self.circuit_map.size().width() / width
+        self.ky = self.circuit_map.size().height() / height
+
+        points = [item for item in self.graphics_view.scene().items() if isinstance(item, SimplePoint)]
+        for point in points:
+            pos_point = point.mapRectToScene(point.rect())
+            x = (pos_point.x() - pos_rect.x()) * 4 * self.kx
+            y = (pos_point.y() - pos_rect.y()) * 4 * self.ky
+            rect = MiniSimplePoint((x, y), object_name=point.object_name)
+            self.circuit_map.scene().addItem(rect)
+
+        del img
 
     def set_line(self, text=None, color=None):
         self.info_line.setText(text)
