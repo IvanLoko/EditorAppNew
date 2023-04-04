@@ -37,6 +37,7 @@ class SimpleRect(QGraphicsRectItem):
         pen.setWidth(2)
         self.setPen(pen)
         self.setCursor(Qt.SizeAllCursor)
+        self.z_rect = None
 
         self.setAcceptHoverEvents(True)
 
@@ -69,28 +70,67 @@ class SimpleRect(QGraphicsRectItem):
             "bottom": [QRectF(self.boundingRect().x() + 5, self.boundingRect().y() + self.boundingRect().height() - 5, self.boundingRect().width() - 10, 5), Qt.SizeVerCursor],
         }
         x, y = pos.x(), pos.y()
+        old_start_x, old_start_y = self.rect().x(), self.rect().y()
+        old_finish_x, old_finish_y = self.rect().width(), self.rect().height()
 
         if anchor.location == "left":
             self.setRect(self.rect().adjusted(x - self.rect().x(), 0, 0, 0))
+            self.flip_checker(side1="left")
         if anchor.location == "top":
             self.setRect(self.rect().adjusted(0, y - self.rect().y(), 0, 0))
+            self.flip_checker(side2="top")
         if anchor.location == "right":
             self.setRect(self.rect().adjusted(0, 0, x - self.rect().x() - self.rect().width(), 0))
+            self.flip_checker(side1="right")
         if anchor.location == "bottom":
             self.setRect(self.rect().adjusted(0, 0, 0, y - self.rect().y() - self.rect().height()))
+            self.flip_checker(side2="bottom")
         if anchor.location == "topLeft":
             self.setRect(self.rect().adjusted(x - self.rect().x(), y - self.rect().y(), 0, 0))
+            self.flip_checker("left", "top")
         if anchor.location == "topRight":
             self.setRect(self.rect().adjusted(0, y - self.rect().y(), x - self.rect().x() - self.rect().width(), 0))
+            self.flip_checker("right", "top")
         if anchor.location == "bottomRight":
-            self.setRect(self.rect().adjusted(0, 0, x - self.rect().x() - self.rect().width(), y - self.rect().y() - self.rect().height()))
+            self.setRect(self.rect().adjusted(0, 0, x - self.rect().x() - self.rect().width(),
+                                              y - self.rect().y() - self.rect().height()))
+            self.flip_checker("right", "bottom")
         if anchor.location == "bottomLeft":
             self.setRect(self.rect().adjusted(x - self.rect().x(), 0, 0, y - self.rect().y() - self.rect().height()))
+            self.flip_checker("left", "bottom")
 
         for el in self.childItems():
+            # if type(el) == AnchorRect:
             el.setRect(self.anchors[el.location][0])
 
         [item.setPos(self.rect().x(), self.rect().y() - 30) for item in self.scene().items() if isinstance(item, SL)]
+
+        self.z_rect.setRect(self.z_rect.x() + (self.rect().x() - old_start_x),
+                            self.z_rect.y() + (self.rect().y() - old_start_y),
+                            self.z_rect.width() + (self.rect().width() - old_finish_x),
+                            self.z_rect.height() + (self.rect().height() - old_finish_y))
+
+    def flip_checker(self, side1=None, side2=None):
+        if side1 == "left" and self.rect().width() < 10:
+            rect = self.rect()
+            rect.setLeft(rect.right() - 10)
+            self.setRect(rect)
+
+        elif side1 == "right" and self.rect().width() < 10:
+            rect = self.rect()
+            rect.setRight(rect.left() + 10)
+            self.setRect(rect)
+
+        if side2 == "top" and self.rect().height() < 10:
+            rect = self.rect()
+            rect.setTop(rect.bottom() - 10)
+            self.setRect(rect)
+
+        if side2 == "bottom" and self.rect().height() < 10:
+            rect = self.rect()
+            rect.setBottom(rect.top() + 10)
+            self.setRect(rect)
+
 
     def hoverEnterEvent(self, event) -> None:
         """При наведении курсора мыши на объект, будет показано его имя"""
@@ -153,7 +193,7 @@ class SimpleRect(QGraphicsRectItem):
 class SimplePoint(QGraphicsRectItem):
     """Обозначение выводов микросхемы"""
 
-    def __init__(self, geom, object_name='', visible_status=True):
+    def __init__(self, geom, object_name='', visible_status=True, parent_rect=None):
         super().__init__()
 
         self.setVisible(visible_status)
@@ -161,6 +201,12 @@ class SimplePoint(QGraphicsRectItem):
         self.setRect(int(geom[0] / 4), int(geom[1] / 4), 7, 7)
         self.object_name = object_name
         self.setCursor(Qt.SizeAllCursor)
+        self.parent_rect=parent_rect
+
+        self.font_size = 6
+        self.shift_right = 10
+        self.shift_left = -10 - (len(self.object_name) * 3)
+        self.shift_y = -3
 
         self.font_size = 6
         self.shift = (10, -3)
@@ -170,6 +216,7 @@ class SimplePoint(QGraphicsRectItem):
             pen.setColor(QColor("#FF2222"))
         else:
             pen.setColor(QColor("#7AA5C2"))
+
         pen.setWidth(2)
         self.setPen(pen)
 
@@ -177,9 +224,26 @@ class SimplePoint(QGraphicsRectItem):
 
     def hoverEnterEvent(self, event) -> None:
         """При наведении курсора мыши на объект, будет показано его имя"""
+        if type(self) == SimplePoint:
+            k1 = abs(self.rect().left() - self.parent_rect.rect().left())
+            k2 = abs(self.rect().left() - self.parent_rect.rect().right())
+            if self.rect().x() - self.parent_rect.rect().left() > 0 > self.rect().x() - self.parent_rect.rect().right():
+                if k2 > k1:
+                    x = self.mapRectToScene(self.rect()).x() + self.shift_right
+                else:
+                    x = self.mapRectToScene(self.rect()).x() + self.shift_left
+            else:
+                if k1 > k2:
+                    x = self.mapRectToScene(self.rect()).x() + self.shift_right
+                else:
+                    x = self.mapRectToScene(self.rect()).x() + self.shift_left
+        else:
+            if self.rect().x() > self.scene().width() - self.rect().x():
+                x = self.mapRectToScene(self.rect()).x() + (self.shift_left * 3 - 10)
+            else:
+                x = self.mapRectToScene(self.rect()).x() + (self.shift_right * 3)
 
-        x = self.mapRectToScene(self.rect()).x() + self.shift[0]
-        y = self.mapRectToScene(self.rect()).y() + self.shift[1]
+        y = self.mapRectToScene(self.rect()).y() + self.shift_y
         if self.isVisible():
             self.scene().addItem(SL((x, y), text=self.object_name, size=self.font_size), )
 

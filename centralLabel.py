@@ -1,5 +1,5 @@
 import cv2
-from PyQt5.QtCore import Qt, QPoint, pyqtSignal
+from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QRectF
 from PyQt5.QtGui import QPixmap, QBrush, QPen, QTransform, QColor
 from PyQt5.QtWidgets import QLabel, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsRectItem, \
     QGraphicsItem
@@ -46,6 +46,8 @@ class GraphicsView(QGraphicsView):
             self.setStyleSheet(style.read())
 
         self.transform_func = QTransform()
+        # Ширина прямоугольника для тела микросхемы
+        self.div = 0
         # Угол поворота колеса мыши
         self.zoom = 0
         self.start = QPoint()
@@ -97,8 +99,16 @@ class GraphicsView(QGraphicsView):
                 start_y = min(self.start.y(), self.finish.y())
                 finish_x = abs(self.finish.x() - self.start.x())
                 finish_y = abs(self.finish.y() - self.start.y())
+
                 rect = QGraphicsRectItem(start_x, start_y, finish_x, finish_y)
                 self.scene().addItem(rect)
+
+                # Дорисовать второй четырехугольник меньшей ширины для тела микросхемы
+                self.div = finish_x * 0.25
+                circ_rect = QGraphicsRectItem(QRectF(start_x + self.div, start_y, finish_x - (self.div*2), finish_y))
+                circ_rect.setPen(QPen(Qt.red, 2))
+                self.scene().addItem(circ_rect)
+
         super(GraphicsView, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
@@ -175,13 +185,20 @@ class GraphicsView(QGraphicsView):
     def add_rect(self):
         """Создание SimpleRect"""
         name = self.parent().elements_list.currentItem().text()
-        rect = SimpleRect(self.start.x(), self.start.y(), self.finish.x(), self.finish.y(),
+        if self.start.x() > self.finish.x():
+            self.div = -self.div
+        self.rect = SimpleRect(self.start.x() + self.div, self.start.y(), self.finish.x() - self.div, self.finish.y(),
                           object_name=name)
-        self.scene().addItem(rect)
+        print(self.start.x(), self.finish.x())
+        self.rect.z_rect = QRectF(min(self.start.x(), self.finish.x()),
+                                  min(self.start.y(), self.finish.y()),
+                                  np.abs(self.start.x() - self.finish.x()),
+                                  np.abs(self.start.y() - self.finish.y()))
+        self.scene().addItem(self.rect)
 
     def add_points(self, points: list):
         """Создание SimplePoint"""
         for num, point in enumerate(points):
             name = f'{self.parent().elements_list.currentItem().text()}_{num + 1}'
             self.scene().addItem(
-                SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status))
+                SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status, parent_rect=self.rect))

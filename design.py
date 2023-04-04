@@ -296,8 +296,7 @@ class CentralWidget(QWidget):
             point.setPos(point.scenePos().x() + data['delta_x'] * kx, point.scenePos().y() + data['delta_y'] * ky)
 
     def itemClicked(self, item):
-
-        pos_rect = item.mapRectToScene(item.rect())
+        pos_rect = item.mapRectToScene(item.z_rect)
         if pos_rect.x() < 0 or pos_rect.y() < 0:
             self.set_line('Wrong position of element', Qt.Red)
             return
