@@ -208,6 +208,9 @@ class SimplePoint(QGraphicsRectItem):
         self.shift_left = -10 - (len(self.object_name) * 3)
         self.shift_y = -3
 
+        self.font_size = 6
+        self.shift = (10, -3)
+
         pen = QPen()
         if self.object_name.split('_')[-1] == '1':
             pen.setColor(QColor("#FF2222"))
