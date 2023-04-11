@@ -87,6 +87,7 @@ class CentralWidget(QWidget):
         self.dirlist = None
         self.setupUI()
         self.graphics_view = GraphicsView(self)
+        self.graphics_view.setObjectName('MainView')
         self.graphics_view.setGeometry(50, 65, 1920-300-50, 1080-30-65)
 
         self.image_tabs = []
@@ -194,6 +195,7 @@ class CentralWidget(QWidget):
                     item.hoverEnterEvent(QGraphicsSceneHoverEvent)
                 else:
                     item.hoverLeaveEvent(QGraphicsSceneHoverEvent)
+                    
         for item in self.circuit_map.items():
             if isinstance(item, MiniSimplePoint) and item.object_name.split("_")[0] in items:
                 if flag:
@@ -310,7 +312,6 @@ class CentralWidget(QWidget):
         # Корректируем размер четырехугольника по вертикальной оси
         pos_rect.setY(y_center - (pos_rect.height() / 2))
         pos_rect.setHeight(pos_rect.height() - dif)
-
         if pos_rect.x() < 0 or pos_rect.y() < 0:
             self.set_line('Wrong position of element', Qt.Red)
             return

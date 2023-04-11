@@ -14,7 +14,6 @@ class MiniGraphicsView(QGraphicsView):
 
         with open("src/style/dark/zikkurat.css") as style:
             self.setStyleSheet(style.read())
-
     def wheelEvent(self, event):
         pass
 
@@ -185,10 +184,10 @@ class SimpleRect(QGraphicsRectItem):
 
     def mouseMoveEvent(self, event):
         """Перемещение объекта по сцене"""
-        pos = event.lastScenePos()
-        upd_pos = event.scenePos()
 
-        orig_pos = self.scenePos()
+        if self.scene().parent().mod == 'standard':
+            pos = event.lastScenePos()
+            upd_pos = event.scenePos()
 
         upd_x = upd_pos.x() - pos.x() + orig_pos.x()
         upd_y = upd_pos.y() - pos.y() + orig_pos.y()

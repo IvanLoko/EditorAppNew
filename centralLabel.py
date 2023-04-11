@@ -206,12 +206,11 @@ class GraphicsView(QGraphicsView):
         if self.mod == 'AI':
             self.rect = SimpleRect(self.start.x(), self.start.y(), self.finish.x(), self.finish.y(),
                                    object_name=name, mod=self.mod)
-
         self.rect.z_rect = QRectF(min(self.start.x(), self.finish.x()),
                                   min(self.start.y(), self.finish.y()),
                                   np.abs(self.start.x() - self.finish.x()),
                                   np.abs(self.start.y() - self.finish.y()))
-
+                                  
         self.scene().addItem(self.rect)
 
     def add_points(self, points: list):
