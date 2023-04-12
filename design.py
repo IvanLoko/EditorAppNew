@@ -80,7 +80,6 @@ class CentralWidget(QWidget):
         self.dict = None
         self.elements_list = ListWidget(self)
         self.circuit_map = MiniGraphicsView(self)
-        self.circuit_map.setObjectName('dickkurat')
 
         self.circuit_map.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.circuit_map.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -196,7 +195,8 @@ class CentralWidget(QWidget):
                     item.hoverEnterEvent(QGraphicsSceneHoverEvent)
                 else:
                     item.hoverLeaveEvent(QGraphicsSceneHoverEvent)
-        for item in self.circuit_map.scene().items():
+                    
+        for item in self.circuit_map.items():
             if isinstance(item, MiniSimplePoint) and item.object_name.split("_")[0] in items:
                 if flag:
                     item.hoverEnterEvent(QGraphicsSceneHoverEvent)
@@ -296,7 +296,22 @@ class CentralWidget(QWidget):
             point.setPos(point.scenePos().x() + data['delta_x'] * kx, point.scenePos().y() + data['delta_y'] * ky)
 
     def itemClicked(self, item):
+        k = self.circuit_map.width() / self.circuit_map.height()
+
         pos_rect = item.mapRectToScene(item.z_rect)
+
+        # Находим координаты центра
+        y_center = pos_rect.y() + (pos_rect.height() / 2)
+
+        # Подгоняем высоту под соотношение зиккурата
+        pos_rect.setHeight(pos_rect.width() / k)
+
+        # Находим разницу старого Y от нового
+        dif = pos_rect.y() - (y_center - (pos_rect.height() / 2))
+
+        # Корректируем размер четырехугольника по вертикальной оси
+        pos_rect.setY(y_center - (pos_rect.height() / 2))
+        pos_rect.setHeight(pos_rect.height() - dif)
         if pos_rect.x() < 0 or pos_rect.y() < 0:
             self.set_line('Wrong position of element', Qt.Red)
             return
@@ -314,7 +329,7 @@ class CentralWidget(QWidget):
         scene = MiniGraphScene(self.circuit_map)
         scene.itemMoved.connect(self.sim_moved)
         pic = QGraphicsPixmapItem()
-        pic.setPixmap(QPixmap.fromImage(cut_image).scaled(self.circuit_map.size()))
+        pic.setPixmap(QPixmap.fromImage(cut_image).scaled(self.circuit_map.size(), Qt.KeepAspectRatio))
         scene.addItem(pic)
 
         self.circuit_map.setScene(scene)

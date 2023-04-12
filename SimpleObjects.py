@@ -10,6 +10,10 @@ class MiniGraphicsView(QGraphicsView):
     def __init__(self, parent):
         super().__init__(parent=parent)
 
+        self.setObjectName("Zikkurat")
+
+        with open("src/style/dark/zikkurat.css") as style:
+            self.setStyleSheet(style.read())
     def wheelEvent(self, event):
         pass
 
@@ -24,7 +28,7 @@ class MiniGraphScene(QGraphicsScene):
 class SimpleRect(QGraphicsRectItem):
     """Обозначение корпуса микросхемы"""
 
-    def __init__(self, x_start, y_start, x_finish, y_finish, object_name=''):
+    def __init__(self, x_start, y_start, x_finish, y_finish, object_name='', mod='AI'):
 
         super().__init__()
         self.object_name = object_name
@@ -38,6 +42,13 @@ class SimpleRect(QGraphicsRectItem):
         self.setPen(pen)
         self.setCursor(Qt.SizeAllCursor)
         self.z_rect = None
+        self.rect_mod = mod
+
+        if self.rect_mod == 'AI':
+            self.setRect(self.rect().adjusted(
+                self.rect().width() * 0.25, 0,
+                self.rect().width() * -0.25, 0
+            ))
 
         self.setAcceptHoverEvents(True)
 
@@ -105,10 +116,10 @@ class SimpleRect(QGraphicsRectItem):
 
         [item.setPos(self.rect().x(), self.rect().y() - 30) for item in self.scene().items() if isinstance(item, SL)]
 
-        self.z_rect.setRect(self.z_rect.x() + (self.rect().x() - old_start_x),
-                            self.z_rect.y() + (self.rect().y() - old_start_y),
-                            self.z_rect.width() + (self.rect().width() - old_finish_x),
-                            self.z_rect.height() + (self.rect().height() - old_finish_y))
+        self.z_rect = self.rect().adjusted(
+            self.rect().width() * -0.5, 0,
+            self.rect().width() * 0.5, 0
+        )
 
     def flip_checker(self, side1=None, side2=None):
         if side1 == "left" and self.rect().width() < 10:
@@ -178,16 +189,14 @@ class SimpleRect(QGraphicsRectItem):
             pos = event.lastScenePos()
             upd_pos = event.scenePos()
 
-            orig_pos = self.scenePos()
-
-            upd_x = upd_pos.x() - pos.x() + orig_pos.x()
-            upd_y = upd_pos.y() - pos.y() + orig_pos.y()
-            [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
-            self.hoverEnterEvent(QGraphicsSceneHoverEvent)
-            self.setPos(QPointF(upd_x, upd_y))
+        upd_x = upd_pos.x() - pos.x() + orig_pos.x()
+        upd_y = upd_pos.y() - pos.y() + orig_pos.y()
+        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+        self.hoverEnterEvent(QGraphicsSceneHoverEvent)
+        self.setPos(QPointF(upd_x, upd_y))
 
     def mouseReleaseEvent(self, event):
-        self.scene().parent().parent().itemClicked(self)
+        self.scene().itemClicked.emit(self)
 
 
 class SimplePoint(QGraphicsRectItem):
@@ -281,21 +290,20 @@ class SimplePoint(QGraphicsRectItem):
 
     def mouseMoveEvent(self, event):
         """Перемещение объекта по сцене"""
-        if self.scene().parent().mod == 'standard':
-            pos = event.lastScenePos()
-            upd_pos = event.scenePos()
+        pos = event.lastScenePos()
+        upd_pos = event.scenePos()
 
-            orig_pos = self.scenePos()
+        orig_pos = self.scenePos()
 
-            upd_x = upd_pos.x() - pos.x() + orig_pos.x()
-            upd_y = upd_pos.y() - pos.y() + orig_pos.y()
-            [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
-            self.hoverEnterEvent(QGraphicsSceneHoverEvent)
-            self.scene().itemMoved.emit({'delta_x': upd_pos.x() - pos.x(),
-                                         'delta_y': upd_pos.y() - pos.y(),
-                                         'object_name': self.object_name,
-                                         'source': self.scene().parent().objectName()})
-            self.setPos(QPointF(upd_x, upd_y))
+        upd_x = upd_pos.x() - pos.x() + orig_pos.x()
+        upd_y = upd_pos.y() - pos.y() + orig_pos.y()
+        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+        self.hoverEnterEvent(QGraphicsSceneHoverEvent)
+        self.scene().itemMoved.emit({'delta_x': upd_pos.x() - pos.x(),
+                                     'delta_y': upd_pos.y() - pos.y(),
+                                     'object_name': self.object_name,
+                                     'source': self.scene().parent().objectName()})
+        self.setPos(QPointF(upd_x, upd_y))
 
     def mouseReleaseEvent(self, event):
         pass
@@ -310,7 +318,7 @@ class MiniSimplePoint(SimplePoint):
 
         self.setVisible(visible_status)
 
-        self.setRect(int(geom[0] / 4), int(geom[1] / 4), 21, 21)
+        self.setRect(int(geom[0] / 4), int(geom[1] / 4), 12, 12)
         self.object_name = object_name
 
         self.font_size = 8
