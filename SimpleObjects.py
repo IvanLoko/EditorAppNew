@@ -1,6 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
 
 import numpy as np
 
@@ -14,12 +15,14 @@ class MiniGraphicsView(QGraphicsView):
 
         with open("src/style/dark/zikkurat.css") as style:
             self.setStyleSheet(style.read())
+
     def wheelEvent(self, event):
         pass
 
 
 class MiniGraphScene(QGraphicsScene):
     itemMoved = pyqtSignal(dict)
+    itemClicked = pyqtSignal(QGraphicsItem)
 
     def __init__(self, parent):
         super().__init__(parent=parent)
@@ -81,8 +84,6 @@ class SimpleRect(QGraphicsRectItem):
             "bottom": [QRectF(self.boundingRect().x() + 5, self.boundingRect().y() + self.boundingRect().height() - 5, self.boundingRect().width() - 10, 5), Qt.SizeVerCursor],
         }
         x, y = pos.x(), pos.y()
-        old_start_x, old_start_y = self.rect().x(), self.rect().y()
-        old_finish_x, old_finish_y = self.rect().width(), self.rect().height()
 
         if anchor.location == "left":
             self.setRect(self.rect().adjusted(x - self.rect().x(), 0, 0, 0))
@@ -142,7 +143,6 @@ class SimpleRect(QGraphicsRectItem):
             rect.setBottom(rect.top() + 10)
             self.setRect(rect)
 
-
     def hoverEnterEvent(self, event) -> None:
         """При наведении курсора мыши на объект, будет показано его имя"""
 
@@ -185,15 +185,18 @@ class SimpleRect(QGraphicsRectItem):
     def mouseMoveEvent(self, event):
         """Перемещение объекта по сцене"""
 
-        if self.scene().parent().mod == 'standard':
-            pos = event.lastScenePos()
-            upd_pos = event.scenePos()
+        # if self.scene().parent().mod == 'standard':
+        pos = event.lastScenePos()
+        upd_pos = event.scenePos()
+
+        orig_pos = self.scenePos()
 
         upd_x = upd_pos.x() - pos.x() + orig_pos.x()
         upd_y = upd_pos.y() - pos.y() + orig_pos.y()
         [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
         self.hoverEnterEvent(QGraphicsSceneHoverEvent)
         self.setPos(QPointF(upd_x, upd_y))
+        event.accept()
 
     def mouseReleaseEvent(self, event):
         self.scene().itemClicked.emit(self)
@@ -210,11 +213,11 @@ class SimplePoint(QGraphicsRectItem):
         self.setRect(int(geom[0] / 4), int(geom[1] / 4), 7, 7)
         self.object_name = object_name
         self.setCursor(Qt.SizeAllCursor)
-        self.parent_rect=parent_rect
+        self.parent_rect = parent_rect
 
         self.font_size = 6
         self.shift_right = 10
-        self.shift_left = -10 - (len(self.object_name) * 3)
+        self.shift_left = -20 - (len(self.object_name) * 3)
         self.shift_y = -3
 
         self.font_size = 6
@@ -222,9 +225,11 @@ class SimplePoint(QGraphicsRectItem):
 
         pen = QPen()
         if self.object_name.split('_')[-1] == '1':
-            pen.setColor(QColor("#FF2222"))
+            pen.setColor(QColor("#D4272A"))
         else:
             pen.setColor(QColor("#7AA5C2"))
+
+        self.setBrush(QColor('#7A7A7A'))
 
         pen.setWidth(2)
         self.setPen(pen)
@@ -286,7 +291,7 @@ class SimplePoint(QGraphicsRectItem):
         # item.setBackground(item.status_color)
 
     def mousePressEvent(self, event):
-        pass
+        self.scene().itemClicked.emit(self)
 
     def mouseMoveEvent(self, event):
         """Перемещение объекта по сцене"""
@@ -366,3 +371,25 @@ class AnchorRect(QGraphicsRectItem):
 
     def mouseReleaseEvent(self, event):
         pass
+
+
+class CropItem(QGraphicsPathItem):
+    def __init__(self, parent, start=None, finish=QPointF(0, 0)):
+        QGraphicsPathItem.__init__(self, parent)
+
+        self.extern_rect = parent.boundingRect()
+        self.intern_rect = QRectF(start.x(), start.y(), finish.x() - start.x(), finish.y() - start.y())
+        self.setBrush(QBrush(QColor(10, 0, 0, 120)))
+
+        pen = QPen()  # creates a default pen
+        pen.setBrush(Qt.white)
+
+        self.setPen(pen)
+        self.create_path()
+
+    def create_path(self):
+        self._path = QPainterPath()
+        self._path.addRect(self.extern_rect)
+        self._path.moveTo(self.intern_rect.topLeft())
+        self._path.addRect(self.intern_rect)
+        self.setPath(self._path)

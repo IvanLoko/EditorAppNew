@@ -1,10 +1,10 @@
 import cv2
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QRectF
-from PyQt5.QtGui import QPixmap, QBrush, QPen, QTransform, QColor
+from PyQt5.QtGui import QPixmap, QBrush, QPen, QTransform, QColor, QMouseEvent
 from PyQt5.QtWidgets import QLabel, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsRectItem, \
     QGraphicsItem
 
-from SimpleObjects import SimpleRect, SimplePoint
+from SimpleObjects import SimpleRect, SimplePoint, CropItem
 from canvas import Canvas
 import numpy as np
 from errors import *
@@ -21,6 +21,7 @@ class GraphicsScene(QGraphicsScene):
         self.canvas = canvas
         self.pic = QGraphicsPixmapItem()
         pixmap = QPixmap(canvas.path)
+        # scaledToWidth(self.parent().width())
         w = pixmap.width()
         h = pixmap.height()
         self.kw = 4800 / w
@@ -53,6 +54,7 @@ class GraphicsView(QGraphicsView):
         self.zoom = 0
         self.start = QPoint()
         self.finish = QPoint()
+        # Выбранные элементы
         # Все трансформации с помощью self.transform_func выполняются относительно местоположения курсора
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         # AI - выделение объектов для сегментации пинов, standard - перемещение объектов по сцене, изменине размеров
@@ -68,14 +70,55 @@ class GraphicsView(QGraphicsView):
            В режиме AI:
                 - Задает стартовую точку отрисовки прямоугольника"""
 
-        if self.mod == 'standard':
+        if event.button() == Qt.RightButton:
+            _event = QMouseEvent(event.type(), event.pos(), Qt.LeftButton, Qt.LeftButton, event.modifiers())
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            super().mousePressEvent(_event)
+            event.accept()
+
+        if self.mod == 'standard' and event.button() == Qt.LeftButton:
             self.start = self.mapToScene(event.pos())
+            self.finish = self.start
 
         elif self.mod == 'AI' and type(self.itemAt(event.pos())) == QGraphicsPixmapItem:
             if event.button() == Qt.LeftButton:
                 self.start = self.mapToScene(event.pos())
                 self.finish = self.start
-                self.update()
+                self.cropItem = CropItem(self.scene().pic, event.pos(), event.pos())
+
+        elif event.buttons() == Qt.RightButton | Qt.LeftButton:
+            [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
+            [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, CropItem)]
+            return
+
+        elif self.mod == 'Axe':
+            if event.button() == Qt.LeftButton:
+
+                pos = self.mapToScene(event.pos())
+                name = self.parent().elements_list.currentItem().text()
+
+                if '_' not in name:
+                    self.parent().set_line('Select wrong elemet', Qt.red)
+                    return
+
+                try:
+
+                    PARENT = [it for it in [it for it in self.scene().items() if isinstance(it, SimpleRect)]
+                              if it.object_name == name.split('_')[0]][0]
+                except IndexError:
+                    self.parent().set_line(f'Switch mod on AI and mark {name.split("_")[0]}', Qt.red)
+                    return
+
+                point = SimplePoint((pos.x() * 4, pos.y() * 4), object_name=name,
+                                    visible_status=self.parent().tool_bar.visible_status,
+                                    parent_rect=PARENT)
+                points = self.scene().items(PARENT.z_rect)
+                for p in points:
+                    if isinstance(p, SimplePoint):
+                        if int(p.object_name.split('_')[-1]) >= int(name.split('_')[-1]):
+                            p.object_name = PARENT.object_name + '_' + str(int(p.object_name.split('_')[-1]) + 1)
+                self.scene().addItem(point)
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -85,34 +128,48 @@ class GraphicsView(QGraphicsView):
             В режиме AI:
                 Отрисовка прямоугольника при выделении области"""
 
-        if event.buttons() == Qt.RightButton:
-            self.transform_func.translate(-event.pos().x(), -event.pos().y())
-            self.setTransform(self.transform_func)
+        if event.buttons() == Qt.LeftButton and self.mod == 'standard':
 
-        elif event.buttons() == Qt.LeftButton and self.mod == 'AI':
             if not self.start.isNull() and not self.finish.isNull():
+
+
+                self.finish = self.mapToScene(event.pos())
+                self.border_check()
+                [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, CropItem)]
+
+                self.cropItem = CropItem(self.scene().pic, self.start, self.mapToScene(event.pos()))
+                self.cropItem.setBrush(QBrush(QColor(10, 0, 0, 80)))
+                pen = QPen()
+                pen.setColor(QColor(Qt.white))
+                pen.setStyle(Qt.DotLine)
+                self.cropItem.setPen(pen)
+
+        if event.buttons() == Qt.LeftButton and self.mod == 'AI':
+
+            if not self.start.isNull() and not self.finish.isNull():
+
                 self.finish = self.mapToScene(event.pos())
                 self.border_check()
                 if self.items():
                     # Удаление всех объектов типа QGraphicsRectItem, иначе при движении мыши будут отрисовываться все
                     # прямоугольники начиная от начальной точки
                     [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
+                    [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, CropItem)]
+
                 start_x = min(self.start.x(), self.finish.x())
                 start_y = min(self.start.y(), self.finish.y())
                 finish_x = abs(self.finish.x() - self.start.x())
                 finish_y = abs(self.finish.y() - self.start.y())
 
-                rect = QGraphicsRectItem(start_x, start_y, finish_x, finish_y)
-                self.scene().addItem(rect)
+                self.cropItem = CropItem(self.scene().pic, self.start, self.mapToScene(event.pos()))
 
-                if self.mod == 'AI':
-                    # Дорисовать второй четырехугольник меньшей ширины для тела микросхемы
-                    circ_rect = QGraphicsRectItem(QRectF(
-                        start_x + (finish_x * 0.25), start_y,
-                        finish_x - (finish_x * 0.5), finish_y
-                    ))
-                    circ_rect.setPen(QPen(Qt.red, 2))
-                    self.scene().addItem(circ_rect)
+                # Дорисовать второй четырехугольник меньшей ширины для тела микросхемы
+                circ_rect = QGraphicsRectItem(QRectF(
+                    start_x + (finish_x * 0.25), start_y,
+                    finish_x - (finish_x * 0.5), finish_y
+                ))
+                circ_rect.setPen(QPen(Qt.red, 2))
+                self.scene().addItem(circ_rect)
 
         super(GraphicsView, self).mouseMoveEvent(event)
 
@@ -122,7 +179,27 @@ class GraphicsView(QGraphicsView):
             В режиме AI:
                 - Создание экземпляров SimpleRect, SimplePoint
                 - """
+
+        if event.button() == Qt.RightButton:
+            _event = QMouseEvent(event.type(), event.pos(), Qt.LeftButton, Qt.LeftButton, event.modifiers())
+            super().mouseReleaseEvent(_event)
+            event.accept()
+            self.setDragMode(QGraphicsView.NoDrag)
+
+        if event.button() == Qt.LeftButton:
+
+            self.scene().removeItem(self.cropItem)
+            rect = QRectF(
+                min(self.start.x(), self.finish.x()),
+                min(self.start.y(), self.finish.y()),
+                abs(self.finish.x() - self.start.x()),
+                abs(self.finish.y() - self.start.y()))
+            self.parent().selected_items = [it for it in self.scene().items(rect)
+                                            if isinstance(it, (SimpleRect, SimplePoint))]
+
+
         if self.mod == 'AI':
+
             if event.button() == Qt.LeftButton:
                 # Координаты будущего SimpleRect
                 self.points = np.array([self.start.x() * self.scene().kw,
@@ -131,12 +208,14 @@ class GraphicsView(QGraphicsView):
                                         self.finish.y() * self.scene().kh]).astype('int32')
                 # обработка обычного клика мышью
                 if self.start == self.finish:
+                    self.scene().removeItem(self.cropItem)
                     return
 
                 try:
                     # Достать информацию о кол-ве пинов из points для проверки
                     name = self.parent().elements_list.currentItem().text()
                     total_points = len(self.parent().dict['Elements'][name]['Pins'].keys())
+                    self.scene().removeItem(self.cropItem)
                     # Поиск пинов
                     dots = self.scene().canvas.pins2json(self.points)
                     # Создание SimpleRect
@@ -154,6 +233,7 @@ class GraphicsView(QGraphicsView):
                         self.parent().set_line(
                             f'Placed object {name} at {self.start.x(), self.start.y()} with {len(dots)} out of total {total_points} points (Wrong element or prediction)',
                             Qt.red)
+
                 except NonePointError:
                     self.parent().set_line('There is no points in area', Qt.red)
                 except cv2.error:
@@ -166,13 +246,17 @@ class GraphicsView(QGraphicsView):
                                            Qt.red)
                 except AttributeError:
                     self.parent().set_line('Set element in element list', Qt.darkYellow)
+                except KeyError:
+                    self.parent().set_line('Wrong point', Qt.red)
+
+                finally:
+                    print('done')
 
         # Удаляем отрисованный прямоугольник из mouseMoveEvent
         [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
 
         self.start = QPoint()
         self.finish = QPoint()
-        print('sssss_')
         super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event) -> None:
@@ -210,7 +294,7 @@ class GraphicsView(QGraphicsView):
                                   min(self.start.y(), self.finish.y()),
                                   np.abs(self.start.x() - self.finish.x()),
                                   np.abs(self.start.y() - self.finish.y()))
-                                  
+
         self.scene().addItem(self.rect)
 
     def add_points(self, points: list):
@@ -218,4 +302,5 @@ class GraphicsView(QGraphicsView):
         for num, point in enumerate(points):
             name = f'{self.parent().elements_list.currentItem().text()}_{num + 1}'
             self.scene().addItem(
-                SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status, parent_rect=self.rect))
+                SimplePoint(point, object_name=name, visible_status=self.parent().tool_bar.visible_status,
+                            parent_rect=self.rect))

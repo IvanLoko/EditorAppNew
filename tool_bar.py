@@ -49,6 +49,7 @@ class ToolBar(QLabel):
         self.AXE_button = ToolBarButton("SectionButton")
         self.AXE_button.setIcon(QIcon("src/icons/dark/new_dark/AXE.png"))
         self.AXE_button.setIconSize(QSize(40, 40))
+        self.AXE_button.clicked.connect(self.parent().mod_AXE)
 
         layout.addWidget(self.AXE_button)
 

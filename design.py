@@ -81,16 +81,11 @@ class CentralWidget(QWidget):
         self.elements_list = ListWidget(self)
         self.circuit_map = MiniGraphicsView(self)
 
-        self.circuit_map.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.circuit_map.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
         self.dirlist = None
         self.setupUI()
-        self.graphics_view = GraphicsView(self)
-        self.graphics_view.setObjectName('MainView')
-        self.graphics_view.setGeometry(50, 65, 1920-300-50, 1080-30-65)
 
         self.image_tabs = []
+        self.selected_items = []
         self.tab = None
         self.sb = None
 
@@ -195,7 +190,7 @@ class CentralWidget(QWidget):
                     item.hoverEnterEvent(QGraphicsSceneHoverEvent)
                 else:
                     item.hoverLeaveEvent(QGraphicsSceneHoverEvent)
-                    
+
         for item in self.circuit_map.items():
             if isinstance(item, MiniSimplePoint) and item.object_name.split("_")[0] in items:
                 if flag:
@@ -296,56 +291,91 @@ class CentralWidget(QWidget):
             point.setPos(point.scenePos().x() + data['delta_x'] * kx, point.scenePos().y() + data['delta_y'] * ky)
 
     def itemClicked(self, item):
-        k = self.circuit_map.width() / self.circuit_map.height()
 
-        pos_rect = item.mapRectToScene(item.z_rect)
+        if isinstance(item, SimpleRect):
 
-        # Находим координаты центра
-        y_center = pos_rect.y() + (pos_rect.height() / 2)
+            k = self.circuit_map.width() / self.circuit_map.height()
 
-        # Подгоняем высоту под соотношение зиккурата
-        pos_rect.setHeight(pos_rect.width() / k)
+            pos_rect = item.mapRectToScene(item.z_rect)
 
-        # Находим разницу старого Y от нового
-        dif = pos_rect.y() - (y_center - (pos_rect.height() / 2))
+            # Находим координаты центра
+            y_center = pos_rect.y() + (pos_rect.height() / 2)
 
-        # Корректируем размер четырехугольника по вертикальной оси
-        pos_rect.setY(y_center - (pos_rect.height() / 2))
-        pos_rect.setHeight(pos_rect.height() - dif)
-        if pos_rect.x() < 0 or pos_rect.y() < 0:
-            self.set_line('Wrong position of element', Qt.Red)
-            return
+            # Подгоняем высоту под соотношение зиккурата
+            pos_rect.setHeight(pos_rect.width() / k)
 
-        y = int(pos_rect.x())
-        x = int(pos_rect.y())
-        y1 = int(pos_rect.x() + pos_rect.width())
-        x1 = int(pos_rect.y() + pos_rect.height())
+            # Находим разницу старого Y от нового
+            dif = pos_rect.y() - (y_center - (pos_rect.height() / 2))
 
-        img = Canvas.read_image(self.graphics_view.scene().canvas.path)
+            # Корректируем размер четырехугольника по вертикальной оси
+            pos_rect.setY(y_center - (pos_rect.height() / 2))
+            pos_rect.setHeight(pos_rect.height() - dif)
+            if pos_rect.x() < 0 or pos_rect.y() < 0:
+                self.set_line('Wrong position of element', Qt.Red)
+                return
 
-        cut_image = img[x: x1, y: y1]
-        height, width, _ = cut_image.shape
-        cut_image = QImage(bytes(cut_image), width, height, width * 3, QImage.Format_RGB888)
-        scene = MiniGraphScene(self.circuit_map)
-        scene.itemMoved.connect(self.sim_moved)
-        pic = QGraphicsPixmapItem()
-        pic.setPixmap(QPixmap.fromImage(cut_image).scaled(self.circuit_map.size(), Qt.KeepAspectRatio))
-        scene.addItem(pic)
+            y = int(pos_rect.x())
+            x = int(pos_rect.y())
+            y1 = int(pos_rect.x() + pos_rect.width())
+            x1 = int(pos_rect.y() + pos_rect.height())
 
-        self.circuit_map.setScene(scene)
+            img = Canvas.read_image(self.graphics_view.scene().canvas.path)
 
-        self.kx = self.circuit_map.size().width() / width
-        self.ky = self.circuit_map.size().height() / height
+            cut_image = img[x: x1, y: y1]
+            height, width, _ = cut_image.shape
+            cut_image = QImage(bytes(cut_image), width, height, width * 3, QImage.Format_RGB888)
+            scene = MiniGraphScene(self.circuit_map)
+            scene.itemMoved.connect(self.sim_moved)
+            scene.itemClicked.connect(self.add_item)
 
-        points = [item for item in self.graphics_view.scene().items() if isinstance(item, SimplePoint)]
-        for point in points:
-            pos_point = point.mapRectToScene(point.rect())
-            x = (pos_point.x() - pos_rect.x()) * 4 * self.kx
-            y = (pos_point.y() - pos_rect.y()) * 4 * self.ky
-            rect = MiniSimplePoint((x, y), object_name=point.object_name)
-            self.circuit_map.scene().addItem(rect)
+            pic = QGraphicsPixmapItem()
+            pic.setPixmap(QPixmap.fromImage(cut_image).scaled(self.circuit_map.size(), Qt.KeepAspectRatio))
+            scene.addItem(pic)
 
-        del img
+            self.circuit_map.setScene(scene)
+
+            self.kx = self.circuit_map.size().width() / width
+            self.ky = self.circuit_map.size().height() / height
+
+            points = [item for item in self.graphics_view.scene().items() if isinstance(item, SimplePoint)]
+            for point in points:
+                pos_point = point.mapRectToScene(point.rect())
+                x = (pos_point.x() - pos_rect.x()) * 4 * self.kx
+                y = (pos_point.y() - pos_rect.y()) * 4 * self.ky
+                rect = MiniSimplePoint((x, y), object_name=point.object_name)
+                self.circuit_map.scene().addItem(rect)
+
+            del img
+
+        if isinstance(item, (SimpleRect, SimplePoint)):
+            self.add_item(item)
+            # self.set_line(f'{item.object_name} selected', Qt.green)
+
+    def add_item(self, item):
+
+        self.selected_items = []
+
+        self.selected_items.append(item)
+
+        if isinstance(item, (SimplePoint, MiniSimplePoint)):
+
+            if item.scene().parent() == self.graphics_view:
+                items = [it for it in self.circuit_map.scene().items() if isinstance(it, MiniSimplePoint)]
+                [self.selected_items.append(it) for it in items if it.object_name == item.object_name]
+
+            if item.scene().parent() == self.circuit_map:
+                items = [it for it in self.graphics_view.scene().items() if isinstance(it, SimplePoint)]
+                [self.selected_items.append(it) for it in items if it.object_name == item.object_name]
+
+        self.set_line(f'Selected {[it.object_name for it in self.selected_items]}', Qt.green)
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Delete:
+            if len(self.selected_items) != 0:
+                for item in self.selected_items:
+                    item.scene().removeItem(item)
+                self.selected_items = []
 
     def set_line(self, text=None, color=None):
         self.info_line.setText(text)
@@ -357,11 +387,15 @@ class CentralWidget(QWidget):
     def mod_AI(self):
         self.graphics_view.mod = 'AI'
         self.elements_list_clicked()
-        self.set_line('AI mod')
+        self.set_line('AI mod', Qt.green)
 
     def mod_STANDARD(self):
         self.graphics_view.mod = 'standard'
-        self.set_line('Standard mod')
+        self.set_line('Standard mod', Qt.green)
+
+    def mod_AXE(self):
+        self.graphics_view.mod = 'Axe'
+        self.set_line('Axe mod', Qt.green)
 
     def setupUI(self):
         self.tool_bar = ToolBar(self)
@@ -385,6 +419,14 @@ class CentralWidget(QWidget):
         self.info_line.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.elements_list.clicked.connect(self.elements_list_clicked)
+
+        self.circuit_map.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.circuit_map.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.graphics_view = GraphicsView(self)
+        self.graphics_view.setObjectName('MainView')
+        self.graphics_view.setGeometry(50, 65, 1920-300-50, 1080-30-65)
+
+
 
 
 if __name__ == "__main__":

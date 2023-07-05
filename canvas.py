@@ -131,7 +131,7 @@ class Canvas:
         kx, ky = width / 256, height / 256
 
         #   Сегментируем изобраэжение
-        det = self.model.predict(crop_img[None, ...])[0, ...][:, :, 1]
+        det = self.model.predict(crop_img[None, ...], verbose=0)[0, ...][:, :, 1]
 
         #   Устанавливаем пороги при которых будем считать что пиксель является пином, а не фоном
         det = np.where(det > 0.018, 255, 0)
