@@ -17,8 +17,8 @@ class Canvas:
         self.index = self.get_index()
         self.width = 4800
         self.height = 3200
-        self.kx_label = self.image.shape[1] / 1200
-        self.ky_label = self.image.shape[0] / 800
+        self.kx_label = self.image.shape[1] / 4800
+        self.ky_label = self.image.shape[0] / 3200
         self.image = cv2.resize(self.image, (self.width, self.height))
         self.model = model
 
@@ -38,7 +38,6 @@ class Canvas:
         else:
             return None
 
-
     def pins2json(self, coordinates: np.array):
         """Функция генерации координат пинов.
 
@@ -55,7 +54,9 @@ class Canvas:
         def dumping_json(centers_sorted: np.array):
             """Функция усреднения, корректировки и масштабирования пинов"""
 
-            width_rectangle = int(self.ky_label * 14)
+            width_rectangle = 8 * self.kx_label
+            height_rectangle = 8 * self.ky_label
+
             # Получаем центральную координату y для микросхемы для выравнивания меток пинов по вертикали
             mean_val = centers_sorted[:, 0].mean()
 
@@ -70,7 +71,7 @@ class Canvas:
             # Создаем координаты правого верхнего и левого нижнего пинов путем отступа width_rectangle px.
             # В итоге получится квадрат со стороной width_rectangle px
 
-            rectangles = np.array([[contour[0] - width_rectangle/2, contour[1] - width_rectangle/2]
+            rectangles = np.array([[contour[0] + height_rectangle / 2, contour[1] + width_rectangle / 2]
                                    for contour in centers_sorted]).astype('int16')
 
             # Алгоритм соответствия пинов по вертикальной координате
@@ -131,7 +132,7 @@ class Canvas:
         kx, ky = width / 256, height / 256
 
         #   Сегментируем изобраэжение
-        det = self.model.predict(crop_img[None, ...])[0, ...][:, :, 1]
+        det = self.model.predict(crop_img[None, ...], verbose=0)[0, ...][:, :, 1]
 
         #   Устанавливаем пороги при которых будем считать что пиксель является пином, а не фоном
         det = np.where(det > 0.018, 255, 0)

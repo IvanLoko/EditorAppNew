@@ -1,6 +1,5 @@
 from keras import Input, Model
-from keras.layers import Conv2D, MaxPool2D, Conv2DTranspose
-from tensorflow import concat
+from keras.layers import Conv2D, MaxPool2D, Conv2DTranspose, concatenate
 
 
 def build_model():
@@ -26,28 +25,29 @@ def build_model():
     out = Conv2D(1024, (3, 3), padding='same', activation='relu')(out)
 
     out = Conv2DTranspose(512, (3, 3), strides=(2, 2), padding='same', activation='relu')(out)
-    out = concat([out4, out], axis=3)
+    out = concatenate([out4, out], axis=3)
 
     out = Conv2D(512, (3, 3), padding='same', activation='relu')(out)
     out = Conv2D(512, (3, 3), padding='same', activation='relu')(out)
 
     out = Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same', activation='relu')(out)
-    out = concat([out3, out], axis=3)
+    out = concatenate([out3, out], axis=3)
 
     out = Conv2D(256, (3, 3), padding='same', activation='relu')(out)
     out = Conv2D(256, (3, 3), padding='same', activation='relu')(out)
 
     out = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same', activation='relu')(out)
-    out = concat([out2, out], axis=3)
+    out = concatenate([out2, out], axis=3)
 
     out = Conv2D(128, (3, 3), padding='same', activation='relu')(out)
     out = Conv2D(128, (3, 3), padding='same', activation='relu')(out)
 
     out = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(out)
-    out = concat([out1, out], axis=3)
+    out = concatenate([out1, out], axis=3)
 
     out = Conv2D(64, (3, 3), padding='same', activation='relu')(out)
     out = Conv2D(64, (3, 3), padding='same', activation='relu')(out)
+
     # Выбираем softmax, так как формально класса 2 - пины и фон
     out = Conv2D(2, (3, 3), padding='same', activation='softmax')(out)
 
