@@ -145,7 +145,7 @@ class SimplePoint(QGraphicsRectItem):
 
         self.setVisible(visible_status)
 
-        self.setRect(geom[0] - 4, geom[1] - 4, 8, 8)
+        self.setRect(geom[0], geom[1], geom[2], geom[3])
         self.object_name = object_name
         self.setCursor(Qt.SizeAllCursor)
 

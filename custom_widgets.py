@@ -82,12 +82,12 @@ class GraphicsScene(QGraphicsScene):
 
         self.canvas = canvas
         self.pic = QGraphicsPixmapItem()
-        pixmap = QPixmap(canvas.path)
-        w = pixmap.width()
-        h = pixmap.height()
+        self.pixmap = QPixmap(canvas.path)
+        w = self.pixmap.width()
+        h = self.pixmap.height()
         self.kw = 4800 / w
         self.kh = 3200 / h
-        self.pic.setPixmap(pixmap)
+        self.pic.setPixmap(self.pixmap)
         self.addItem(self.pic)
         self.setSceneRect(QRectF(0, 0, w, h))
 
@@ -189,10 +189,10 @@ class TabWidget(QGraphicsView):
 
         if event.button() == Qt.LeftButton:
             # Координаты будущего SimpleRect
-            self.points = np.array([self.start.x() * self.scene().kw,
-                                    self.start.y() * self.scene().kh,
-                                    self.finish.x() * self.scene().kw,
-                                    self.finish.y() * self.scene().kh]).astype('int32')
+            self.points = np.array([self.start.x(),
+                                    self.start.y(),
+                                    self.finish.x(),
+                                    self.finish.y()]).astype('int16')
 
             if self.mainwindow.mod == 'ZOOM':
 
@@ -206,9 +206,13 @@ class TabWidget(QGraphicsView):
                 if self.start == self.finish:
                     return
 
+                img = self.scene().pixmap.copy(QRect(100, 100, 200, 200))
+
+
                 # Поиск пинов
                 try:
                     dots = self.scene().canvas.pins2json(self.points)
+
 
                 except NonePointError:
                     self.mainwindow.log("Error: no points in this area")
@@ -232,8 +236,6 @@ class TabWidget(QGraphicsView):
 
                 for num, point in enumerate(dots):
                     name = f'{self.mainwindow.TreeListWidget.currentItem().text(0)}_{num + 1}'
-                    point[0] = point[0]
-                    point[1] = point[1]
                     self.scene().addItem(
                         SimplePoint(point, object_name=name, visible_status=self.mainwindow.pins_status))
 

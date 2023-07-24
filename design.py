@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -12,7 +13,7 @@ import sys
 import json
 import glob
 from datetime import datetime
-from model import build_model
+from ultralytics import YOLO
 from PIL import Image, ImageStat
 
 
@@ -370,9 +371,8 @@ class UI(QMainWindow):
 
 if __name__ == '__main__':
 
-    model = build_model()
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.load_weights('data/U-net/weights.hdf5')
+    model = YOLO('data/best.pt')
+    model(np.zeros((256, 256, 3)))
 
     app = QApplication(sys.argv)
 
