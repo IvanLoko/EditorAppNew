@@ -17,16 +17,18 @@ class SimpleRect(QGraphicsRectItem):
                      np.abs(x_start - x_finish),
                      np.abs(y_start - y_finish))
         pen = QPen()
-        pen.setColor(QColor("#33bd44"))
+        pen.setColor(QColor("#11ab22"))
         pen.setWidth(2)
         self.setPen(pen)
         self.setCursor(Qt.SizeAllCursor)
         self.rect_mod = mod
+        self.dx, self.dy = 0, 0
+        self.sl = None
 
         if self.rect_mod == 'AI':
             self.setRect(self.rect().adjusted(
-                self.rect().width() * 0.25, 0,
-                self.rect().width() * -0.25, 0
+                self.rect().width() * 0.15, 0,
+                self.rect().width() * -0.15, 0
             ))
 
         self.setAcceptHoverEvents(True)
@@ -88,10 +90,12 @@ class SimpleRect(QGraphicsRectItem):
             self.flip_checker("left", "bottom")
 
         for el in self.childItems():
-            # if type(el) == AnchorRect:
             el.setRect(self.anchors[el.location][0])
 
-        [item.setPos(self.rect().x(), self.rect().y() - 30) for item in self.scene().items() if isinstance(item, SL)]
+        [item.setPos(
+            self.rect().x() + self.rect().width() / 2 - item.boundingRect().width() / 2,
+            self.rect().y() + self.rect().height() / 2 - item.boundingRect().height() / 2
+        ) for item in self.scene().items() if isinstance(item, SL)]
 
     def flip_checker(self, side1=None, side2=None):
         if side1 == "left" and self.rect().width() < 10:
@@ -118,23 +122,73 @@ class SimpleRect(QGraphicsRectItem):
         """При наведении курсора мыши на объект, будет показано его имя"""
 
         x = self.mapRectToScene(self.rect()).x()
-        y = self.mapRectToScene(self.rect()).y() - 30
-        self.scene().addItem(SL((x, y), text=self.object_name, size=10))
+        x += self.rect().width() / 2
+        y = self.mapRectToScene(self.rect()).y()
+        y += self.rect().height() / 2
 
-        pen = QPen()
-        pen.setColor(QColor("#44ce55"))
-        pen.setWidth(2)
-        self.setPen(pen)
+        self.sl = SL((x, y), text=self.object_name, size=10)
+        self.scene().addItem(self.sl)
+
+        if self.scene().parent().current_el != self:
+            pen = QPen()
+            pen.setColor(QColor("#44ef55"))
+            pen.setWidth(2)
+            self.setPen(pen)
 
     def hoverLeaveEvent(self, event):
         """Как только курсор покидает область объекта, удаляет текст его имени"""
 
-        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+        self.scene().removeItem(self.sl)
+
+        if self.scene().parent().current_el != self:
+            pen = QPen()
+            pen.setColor(QColor("#11ab22"))
+            pen.setWidth(2)
+            self.setPen(pen)
+
+    def mousePressEvent(self, event):
+
+        if self.scene().parent().current_el and self.scene().parent().current_el.object_name.split('_')[-1] != '1':
+
+            pen = QPen()
+            pen.setColor(QColor("#11ab22"))
+            pen.setWidth(2)
+            self.scene().parent().current_el.setPen(pen)
+
+        self.scene().parent().current_el = self
 
         pen = QPen()
-        pen.setColor(QColor("#33bd44"))
+        pen.setColor(QColor("#44ef55"))
         pen.setWidth(2)
         self.setPen(pen)
+
+        self.dx, self.dy = event.scenePos().x() - self.rect().x(), event.scenePos().y() - self.rect().y()
+
+    def mouseMoveEvent(self, event):
+
+        self.setRect(event.scenePos().x() - self.dx, event.scenePos().y() - self.dy, self.rect().width(),
+                     self.rect().height())
+
+        [item.setPos(
+            self.rect().x() + self.rect().width() / 2 - item.boundingRect().width() / 2,
+            self.rect().y() + self.rect().height() / 2 - item.boundingRect().height() / 2
+        ) for item in self.scene().items() if isinstance(item, SL)]
+
+        # Update anchors
+
+        self.anchors = {
+            "topLeft": [QRectF(self.boundingRect().x(), self.boundingRect().y(), 5, 5), Qt.SizeFDiagCursor],
+            "topRight": [QRectF(self.boundingRect().x() + self.boundingRect().width() - 5, self.boundingRect().y(), 5, 5), Qt.SizeBDiagCursor],
+            "bottomRight": [QRectF(self.boundingRect().x() + self.boundingRect().width() - 5, self.boundingRect().y() + self.boundingRect().height() - 5, 5, 5), Qt.SizeFDiagCursor],
+            "bottomLeft": [QRectF(self.boundingRect().x(), self.boundingRect().y() + self.boundingRect().height() - 5, 5, 5), Qt.SizeBDiagCursor],
+            "left": [QRectF(self.boundingRect().x(), self.boundingRect().y() + 5, 5, self.boundingRect().height() - 10), Qt.SizeHorCursor],
+            "top": [QRectF(self.boundingRect().x() + 5, self.boundingRect().y(), self.boundingRect().width() - 10, 5), Qt.SizeVerCursor],
+            "right": [QRectF(self.boundingRect().x() + self.boundingRect().width() - 5, self.boundingRect().y() + 5, 5, self.boundingRect().height() - 10), Qt.SizeHorCursor],
+            "bottom": [QRectF(self.boundingRect().x() + 5, self.boundingRect().y() + self.boundingRect().height() - 5, self.boundingRect().width() - 10, 5), Qt.SizeVerCursor],
+        }
+
+        for el in self.childItems():
+            el.setRect(self.anchors[el.location][0])
 
 
 class SimplePoint(QGraphicsRectItem):
@@ -148,20 +202,15 @@ class SimplePoint(QGraphicsRectItem):
         self.setRect(geom[0], geom[1], geom[2], geom[3])
         self.object_name = object_name
         self.setCursor(Qt.SizeAllCursor)
+        self.sl = None
 
-        self.font_size = 6
-        self.shift_right = 10
-        self.shift_left = -10 - (len(self.object_name) * 3)
-        self.shift_y = -3
-
-        self.font_size = 6
-        self.shift = (10, -3)
+        self.dx, self.dy = 0, 0
 
         pen = QPen()
         if self.object_name.split('_')[-1] == '1':
             pen.setColor(QColor("#FF2222"))
         else:
-            pen.setColor(QColor("#33bd44"))
+            pen.setColor(QColor("#11ab22"))
 
         pen.setWidth(2)
         self.setPen(pen)
@@ -171,31 +220,65 @@ class SimplePoint(QGraphicsRectItem):
     def hoverEnterEvent(self, event) -> None:
         """При наведении курсора мыши на объект, будет показано его имя"""
 
-        x = self.mapRectToScene(self.rect()).x() + self.shift_right
-        y = self.mapRectToScene(self.rect()).y() + self.shift_y
+        x = self.mapRectToScene(self.rect()).x()
+        x += self.rect().width() / 2
+        y = self.mapRectToScene(self.rect()).y()
+        y += self.rect().height() / 2
         if self.isVisible():
-            self.scene().addItem(SL((x, y), text=self.object_name, size=self.font_size))
+            self.sl = SL((x, y), text=self.object_name, size=6)
+            self.scene().addItem(self.sl)
 
         if self.object_name.split('_')[-1] == '1':
             return
 
-        pen = QPen()
-        pen.setColor(QColor("#44ce55"))
-        pen.setWidth(2)
-        self.setPen(pen)
+        if self.scene().parent().current_el != self:
+            pen = QPen()
+            pen.setColor(QColor("#44ef55"))
+            pen.setWidth(2)
+            self.setPen(pen)
 
     def hoverLeaveEvent(self, event):
         """Как только курсор покидает область объекта, удаляет текст его имени"""
 
-        [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, SL)]
+        self.scene().removeItem(self.sl)
 
         if self.object_name.split('_')[-1] == '1':
             return
 
-        pen = QPen()
-        pen.setColor(QColor("#33bd44"))
-        pen.setWidth(2)
-        self.setPen(pen)
+        if self.scene().parent().current_el != self:
+            pen = QPen()
+            pen.setColor(QColor("#11ab22"))
+            pen.setWidth(2)
+            self.setPen(pen)
+
+    def mousePressEvent(self, event):
+
+        if self.scene().parent().current_el and self.scene().parent().current_el.object_name.split('_')[-1] != '1':
+
+            pen = QPen()
+            pen.setColor(QColor("#11ab22"))
+            pen.setWidth(2)
+            self.scene().parent().current_el.setPen(pen)
+
+        self.scene().parent().current_el = self
+
+        if self.object_name.split('_')[-1] != '1':
+            pen = QPen()
+            pen.setColor(QColor("#44ef55"))
+            pen.setWidth(2)
+            self.setPen(pen)
+
+        self.dx, self.dy = event.scenePos().x() - self.rect().x(), event.scenePos().y() - self.rect().y()
+
+    def mouseMoveEvent(self, event):
+
+        self.setRect(event.scenePos().x() - self.dx, event.scenePos().y() - self.dy, self.rect().width(),
+                     self.rect().height())
+
+        [item.setPos(
+            self.rect().x() + self.rect().width() / 2 - item.boundingRect().width() / 2,
+            self.rect().y() + self.rect().height() / 2 - item.boundingRect().height() / 2
+        ) for item in self.scene().items() if isinstance(item, SL)]
 
 
 class SL(QGraphicsSimpleTextItem):
@@ -203,11 +286,16 @@ class SL(QGraphicsSimpleTextItem):
 
     def __init__(self, pos=None, text=None, size=6):
         super().__init__()
+        self.size = size
         self.setText(text)
-        self.setPos(*pos)
-        self.setBrush(QBrush(QColor("#33bd44")))
-        self.setFont(QFont("Cascadia", size))
+        self.setPos(pos[0] - self.boundingRect().width() / 2, pos[1] - self.boundingRect().height() / 2)
         self.show()
+
+    def paint(self, painter: QPainter, option: 'QStyleOptionGraphicsItem', widget: QWidget) -> None:
+        custom_font = QFont(QFont("Cascadia", self.size))
+        painter.setFont(custom_font)
+        painter.setPen(QPen(QColor("#E6C000")))
+        painter.drawText(self.boundingRect(), Qt.AlignCenter, self.text())
 
 
 class AnchorRect(QGraphicsRectItem):
@@ -222,10 +310,7 @@ class AnchorRect(QGraphicsRectItem):
         self.setOpacity(0.01)
 
     def mousePressEvent(self, event):
-        pass
+        return
 
     def mouseMoveEvent(self, event):
         self.parentItem().anchor_drag(self, event.pos())
-
-    def mouseReleaseEvent(self, event):
-        pass

@@ -32,7 +32,7 @@ class Canvas:
         else:
             return None
 
-    def pins2json(self, coordinates: np.array):
+    def pins2json(self, coordinates: np.array, confidence=0.25):
         """Функция генерации координат пинов.
 
         На выходе создается отсортированный массив вида:
@@ -61,8 +61,7 @@ class Canvas:
 
         #   Сегментируем изобраэжение
 
-        bboxes = self.model.predict(crop_img, iou=0.001)[0].boxes.xywh.numpy()
-
+        bboxes = self.model.predict(crop_img, iou=0.001, conf=confidence)[0].boxes.xywh.numpy()
 
         bboxes[:, 0] = bboxes[:, 0] - bboxes[:, 2] // 2 + min(y1, y2)
         bboxes[:, 2] = bboxes[:, 2]
@@ -83,11 +82,9 @@ class Canvas:
             rectangles = sorted(bboxes[bboxes[:, 0] > middle], key=lambda x: x[1], reverse=True) + \
                          sorted(bboxes[bboxes[:, 0] < middle], key=lambda x: x[1])
 
-
         #   Мод = 'lt'
         if x1 < x2 and y1 < y2:
             rectangles = sorted(bboxes[bboxes[:, 0] < middle], key=lambda x: x[1]) + \
                          sorted(bboxes[bboxes[:, 0] > middle], key=lambda x: x[1], reverse=True)
-
 
         return rectangles

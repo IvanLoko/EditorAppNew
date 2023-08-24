@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-from custom_widgets import TreeWidgetItem, TreeWidgetChild, TabWidget
+from custom_widgets import TreeWidgetItem, TreeWidgetChild, TabWidget, GraphicsBlueprintItem
 from simple_objects import SimpleRect, SimplePoint
 
 from win32api import GetMonitorInfo, MonitorFromPoint
@@ -33,6 +33,7 @@ class UI(QMainWindow):
         self.mod = "AI"
         self.pins_status = True
         self.cur_view = None
+        self.bp_view = None
         self.normalized_geometry = self.geometry()
         self.grip_position = QPoint(0, 0)
 
@@ -41,16 +42,8 @@ class UI(QMainWindow):
     def setupUi(self):
 
         # Show idle mode until project loaded
-        self.GraphicsTabWidget.hide()
-        self.BlueprintTabWidget.hide()
-        self.TabResizeFrame.hide()
-        self.SidePanel.hide()
-
-        # Remove test objects
-        self.BlueprintTabWidget.clear()
-        self.GraphicsTabWidget.clear()
-        self.TreeListWidget.clear()
         self.GraphicsLogger.clear()
+        self.go_idle()
 
         # Window properties
         self.setWindowTitle("Editor App")
@@ -63,6 +56,17 @@ class UI(QMainWindow):
         self.grip_frame.move(self.width() - 12, self.height() - 12)
 
         self.SizeGrip = QSizeGrip(self.grip_frame)
+
+        # Opacity input
+        self.OpacityBox.valueChanged.connect(self.opacity_trim)
+
+        # Blueprint load button
+        self.BLButton.clicked.connect(self.bp_load)
+        self.BLVisibleButton.clicked.connect(self.bp_visible)
+
+        # Connect current view change
+        self.GraphicsTabWidget.currentChanged.connect(self.change_bpview)
+        self.BlueprintTabWidget.currentChanged.connect(self.change_curview)
 
         # Necessary and not elements
         self.show()
@@ -126,10 +130,9 @@ class UI(QMainWindow):
 
         if self.dirlist:
             try:
+
                 with open(self.dirlist + r'/Контрольные точки/Points', 'r') as ff:
                     self.dict = json.loads(ff.read(), strict=False)
-                    self.ProjectName.setText(f"{self.dirlist.split('/')[-1]}  -  Editor App")
-                    self.setWindowTitle(self.dirlist.split('/')[-1] + "  -  Editor App")
 
             except FileNotFoundError:
                 self.log("Project file not found")
@@ -149,6 +152,10 @@ class UI(QMainWindow):
                 elif answer in (QMessageBox.No, QMessageBox.Close):
                     self.log("Canceled project loading")
                     return
+
+            except UnicodeDecodeError:
+                self.log("Codec can't decode Points (Project may be corrupted)")
+                return
 
         else:
             self.log("Canceled project loading")
@@ -178,26 +185,110 @@ class UI(QMainWindow):
 
                     item.addChild(pin_item)
 
+            grayscale = None
+            color = None
+
             # Add image tab
             for file in glob.glob(self.dirlist + r'\Виды\*'):
 
                 tab_widget = TabWidget(file, model, self)
+
+                if self.detect_color(file) == self.BlueprintTabWidget:
+
+                    grayscale = True
+
+                else:
+
+                    color = True
 
                 self.detect_color(file).addTab(tab_widget, file.split('\\')[-1])
 
             self.TreeListWidget.setCurrentIndex(self.TreeListWidget.indexAt(QPoint(0, 0)))
 
             # Show graphic elements
-            self.GraphicsTabWidget.show()
-            self.BlueprintTabWidget.show()
-            self.TabResizeFrame.show()
-            self.SidePanel.show()
+            self.go_work()
+
+            # Check empty widgets
+            if not color:
+                self.TabResizeFrame.hide()
+                self.GraphicsTabWidget.hide()
+
+            elif not grayscale:
+                self.TabResizeFrame.hide()
+                self.BlueprintTabWidget.hide()
+
+            elif not color and not grayscale:
+                self.log("No images found")
+                self.go_idle()
+                return
+
+            if not self.TreeListWidget.currentItem():
+                self.log("No elements found")
+                self.go_idle()
+                return
 
             # Set current view
-            self.cur_view = self.GraphicsTabWidget.currentWidget().scene().canvas.path
+            self.cur_view = self.GraphicsTabWidget.currentWidget()
+            self.bp_view = self.GraphicsTabWidget.currentWidget()
+
+            # Change window name
+            self.ProjectName.setText(f"{self.dirlist.split('/')[-1]}  -  Editor App")
+            self.setWindowTitle(self.dirlist.split('/')[-1] + "  -  Editor App")
 
             # Log loading
             self.log(f"Project {self.dirlist} successfully opened")
+
+    def go_idle(self):
+
+        # Hide and clear graphics
+        self.GraphicsTabWidget.hide()
+        self.BlueprintTabWidget.hide()
+        self.TabResizeFrame.hide()
+        self.SidePanel.hide()
+
+        self.GraphicsTabWidget.clear()
+        self.BlueprintTabWidget.clear()
+        self.TreeListWidget.clear()
+
+        # Hide toolbar
+        self.ProjectLine.hide()
+        self.ToolsLine.hide()
+        self.ImageLine.hide()
+        self.SaveButton.hide()
+        self.AIButton.hide()
+        self.AXEButton.hide()
+        self.MOVEButton.hide()
+        self.RotateButton.hide()
+        self.MirrorYButton.hide()
+        self.MirrorXButton.hide()
+        self.CropButton.hide()
+        self.ZoomButton.hide()
+        self.PinsButton.hide()
+        self.NamesButton.hide()
+
+    def go_work(self):
+
+        # Show graphics
+        self.GraphicsTabWidget.show()
+        self.BlueprintTabWidget.show()
+        self.TabResizeFrame.show()
+        self.SidePanel.show()
+
+        # Show toolbar
+        self.ProjectLine.show()
+        self.ToolsLine.show()
+        self.ImageLine.show()
+        self.SaveButton.show()
+        self.AIButton.show()
+        self.AXEButton.show()
+        self.MOVEButton.show()
+        self.RotateButton.show()
+        self.MirrorYButton.show()
+        self.MirrorXButton.show()
+        self.CropButton.show()
+        self.ZoomButton.show()
+        self.PinsButton.show()
+        self.NamesButton.show()
 
     def save_project(self):
 
@@ -339,14 +430,18 @@ class UI(QMainWindow):
 
     def log(self, text: str):
         """ Append text in logger """
+        
         self.GraphicsLogger.appendPlainText(f"<{str(datetime.now().time()).split('.')[0]}> " + text)
 
     def change_mode(self, mode: str):
+
         self.mod = mode
         self.log(f"Mouse mode changed -> {self.mod}")
 
     def pins_status_change(self):
+
         self.pins_status = not self.pins_status
+
         for view in (self.GraphicsTabWidget.findChildren(TabWidget) + self.BlueprintTabWidget.findChildren(TabWidget)):
 
             [item.setVisible(self.pins_status) for item in view.scene().items() if type(item) == SimplePoint]
@@ -354,25 +449,178 @@ class UI(QMainWindow):
         self.log(f"Points visibility set to {self.pins_status}")
 
     def view_rotation(self):
+
         if self.cur_view:
+
             self.cur_view.transform_func.rotate(90)
             self.cur_view.setTransform(self.cur_view.transform_func)
 
     def reflect_y(self):
+
         if self.cur_view:
+
             self.cur_view.transform_func.scale(-1, 1)
             self.cur_view.setTransform(self.cur_view.transform_func)
 
     def reflect_x(self):
+
         if self.cur_view:
+
             self.cur_view.transform_func.scale(1, -1)
             self.cur_view.setTransform(self.cur_view.transform_func)
+
+    def opacity_trim(self):
+
+        nosuff = self.OpacityBox.text()[:-1]
+
+        if len(nosuff) > 1 and nosuff[0] == "0":
+
+            self.OpacityBox.setValue(int(nosuff[1:]))
+
+        elif self.OpacityBox.value() > 100:
+
+            self.OpacityBox.setValue(100)
+
+        if self.bp_view.blueprint:
+
+            self.bp_view.blueprint.setOpacity(self.OpacityBox.value() / 100)
+
+    def bp_load(self):
+
+        file_path = QFileDialog.getOpenFileName(None, "Выберите изображение", '', "Images (*.png *.jpg)")[0].replace('/', '\\')
+
+        if file_path:
+
+            if self.bp_view.blueprint:
+
+                self.bp_view.scene().removeItem(self.bp_view.blueprint)
+
+            self.bp_view.blueprint = GraphicsBlueprintItem(file_path)
+            self.bp_view.blueprint.setOpacity(self.OpacityBox.value() / 100)
+            self.BLButton.setText(self.bp_view.blueprint.path.split('\\')[-1])
+            self.bp_view.scene().addItem(self.bp_view.blueprint)
+            self.OpacityBox.setReadOnly(False)
+
+    def bp_visible(self):
+
+        if not self.bp_view.blueprint:
+
+            return
+
+        if self.bp_view.blueprint.isVisible():
+
+            self.bp_view.blueprint.setVisible(False)
+            self.BLVisibleButton.setIcon(QIcon("src/icons/free/eye-off.svg"))
+
+        else:
+
+            self.bp_view.blueprint.setVisible(True)
+            self.BLVisibleButton.setIcon(QIcon("src/icons/free/eye.svg"))
+
+    def change_curview(self):
+
+        self.cur_view = self.GraphicsTabWidget.currentWidget()
+
+    def change_bpview(self):
+
+        if self.GraphicsTabWidget.currentWidget():
+
+            self.bp_view = self.GraphicsTabWidget.currentWidget()
+
+        else:
+
+            return
+
+        self.change_curview()
+
+        if self.bp_view.blueprint:
+
+            if not self.bp_view.blueprint.isVisible():
+
+                self.BLVisibleButton.setIcon(QIcon("src/icons/free/eye-off.svg"))
+
+            else:
+
+                self.BLVisibleButton.setIcon(QIcon("src/icons/free/eye.svg"))
+
+            self.BLButton.setText(self.bp_view.blueprint.path.split('\\')[-1])
+            self.OpacityBox.setValue(int(self.bp_view.blueprint.opacity() * 100))
+            self.OpacityBox.setReadOnly(False)
+
+        else:
+
+            self.BLVisibleButton.setIcon(QIcon("src/icons/free/eye.svg"))
+            self.BLButton.setText("No Image")
+            self.OpacityBox.setReadOnly(True)
+            self.OpacityBox.setValue(30)
+
+    def next_item(self, count=0):
+
+        if self.mod == "AI":
+
+            self.TreeListWidget.currentItem().change_status(True)
+
+            for index in range(0, count):
+
+                try:
+
+                    self.TreeListWidget.currentItem().child(index).change_status(True)
+
+                except AttributeError:
+
+                    break
+
+            if self.TreeListWidget.currentItem().childCount() <= count:
+
+                self.TreeListWidget.currentItem().setExpanded(False)
+                next_item = self.TreeListWidget.topLevelItem(self.TreeListWidget.currentIndex().row() + 1)
+                self.TreeListWidget.setCurrentItem(next_item)
+
+            else:
+
+                last_item = self.TreeListWidget.currentItem().child(count)
+                self.TreeListWidget.setCurrentItem(last_item)
+
+        elif self.mod == "AXE":
+
+            if type(self.TreeListWidget.currentItem()) == TreeWidgetItem:
+
+                self.TreeListWidget.currentItem().change_status(True)
+
+                if self.TreeListWidget.currentItem().child(0):
+
+                    self.TreeListWidget.currentItem().setExpanded(True)
+                    self.TreeListWidget.setCurrentItem(self.TreeListWidget.currentItem().child(0))
+
+                else:
+
+                    next_item = self.TreeListWidget.topLevelItem(self.TreeListWidget.currentIndex().row() + 1)
+                    self.TreeListWidget.setCurrentItem(next_item)
+
+            elif type(self.TreeListWidget.currentItem()) == TreeWidgetChild:
+
+                item = self.TreeListWidget.currentItem()
+                item_index = item.parent().indexOfChild(item)
+
+                if item.parent().child(item_index + 1):
+
+                    self.TreeListWidget.currentItem().change_status(True)
+                    self.TreeListWidget.setCurrentItem(item.parent().child(item_index + 1))
+
+                else:
+
+                    self.TreeListWidget.currentItem().change_status(True)
+                    self.TreeListWidget.currentItem().parent().setExpanded(False)
+
+                    self.TreeListWidget.setCurrentItem(item.parent())
+                    next_item = self.TreeListWidget.topLevelItem(self.TreeListWidget.currentIndex().row() + 1)
+                    self.TreeListWidget.setCurrentItem(next_item)
 
 
 if __name__ == '__main__':
 
-    model = YOLO('data/best.pt')
-    model(np.zeros((256, 256, 3)))
+    model = YOLO('data/best.pt', task='predict')
+    model(np.zeros((256, 256, 3)), verbose=False)
 
     app = QApplication(sys.argv)
 
