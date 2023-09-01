@@ -1,4 +1,5 @@
 import numpy as np
+import multiprocessing
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -454,6 +455,14 @@ class UI(QMainWindow):
 
             self.cur_view.transform_func.rotate(90)
             self.cur_view.setTransform(self.cur_view.transform_func)
+            self.cur_view.rotation += 90
+            if self.cur_view.rotation == 360:
+                self.cur_view.rotation = 0
+
+            canvas = self.cur_view.scene().canvas
+            canvas.image = canvas.read_image(canvas.path,
+                                             self.cur_view.rotation, self.cur_view.flipped, self.cur_view.mirrored
+                                             )
 
     def reflect_y(self):
 
@@ -461,6 +470,12 @@ class UI(QMainWindow):
 
             self.cur_view.transform_func.scale(-1, 1)
             self.cur_view.setTransform(self.cur_view.transform_func)
+            self.cur_view.mirrored = True
+
+            canvas = self.cur_view.scene().canvas
+            canvas.image = canvas.read_image(canvas.path,
+                                             self.cur_view.rotation, self.cur_view.flipped, self.cur_view.mirrored
+                                             )
 
     def reflect_x(self):
 
@@ -468,6 +483,12 @@ class UI(QMainWindow):
 
             self.cur_view.transform_func.scale(1, -1)
             self.cur_view.setTransform(self.cur_view.transform_func)
+            self.cur_view.flipped = True
+
+            canvas = self.cur_view.scene().canvas
+            canvas.image = canvas.read_image(canvas.path,
+                                             self.cur_view.rotation, self.cur_view.flipped, self.cur_view.mirrored
+                                             )
 
     def opacity_trim(self):
 
@@ -618,6 +639,8 @@ class UI(QMainWindow):
 
 
 if __name__ == '__main__':
+
+    multiprocessing.freeze_support()
 
     model = YOLO('data/best.pt', task='predict')
     model(np.zeros((256, 256, 3)), verbose=False)
