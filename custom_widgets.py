@@ -1,9 +1,8 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from errors import *
 
-from simple_objects import SimpleRect, SimplePoint
+from simple_objects import SimpleRect, SimplePoint, AnchorRect
 from conf_dialog import ConfDialog
 
 import numpy as np
@@ -141,13 +140,16 @@ class TabWidget(QGraphicsView):
         self.transform_func = QTransform()
         self.div = 0
         self.zoom = 0
+        self.flipped = False
+        self.mirrored = False
+        self.rotation = 0
         self.shift = QPoint()
         self.start = QPoint()
         self.finish = QPoint()
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.points = None
         self.blueprint = None
-        self.current_el = None
+        self.current_el = []
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
@@ -158,20 +160,23 @@ class TabWidget(QGraphicsView):
 
     def keyPressEvent(self, event):
 
-        if event.key() == Qt.Key_Delete and self.current_el:
+        if event.key() == Qt.Key_Delete:
 
-            if type(self.current_el) == SimpleRect:
+            for item in self.current_el:
 
-                self.mainwindow.TreeListWidget.findItems(self.current_el.object_name, Qt.MatchExactly)[0].change_status(False)
+                if type(item) == SimpleRect:
 
-            else:
+                    self.mainwindow.TreeListWidget.findItems(item.object_name, Qt.MatchExactly)[0].change_status(False)
 
-                item = self.mainwindow.TreeListWidget.findItems(self.current_el.object_name.split("_")[0], Qt.MatchExactly)[0]
-                item.child(int(self.current_el.object_name.split("_")[-1]) - 1).change_status(False)
+                else:
 
-            self.scene().removeItem(self.current_el.sl)
-            self.scene().removeItem(self.current_el)
-            self.current_el = None
+                    l_item = self.mainwindow.TreeListWidget.findItems(item.object_name.split("_")[0], Qt.MatchExactly)[0]
+                    l_item.child(int(item.object_name.split("_")[-1]) - 1).change_status(False)
+
+                self.scene().removeItem(item.sl)
+                self.scene().removeItem(item)
+
+            self.current_el.clear()
 
     def mousePressEvent(self, event):
 
@@ -230,8 +235,11 @@ class TabWidget(QGraphicsView):
 
         elif self.mainwindow.mod in ["AXE", "CROP", "AI"]:
 
-            if not self.start.isNull() and not self.finish.isNull() and \
-               not type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetChild:
+            if self.mainwindow.mod in ["AXE", "AI"] and type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetChild:
+                super().mouseMoveEvent(event)
+                return
+
+            if not self.start.isNull() and not self.finish.isNull():
 
                 self.finish = self.mapToScene(event.pos())
 
@@ -247,15 +255,29 @@ class TabWidget(QGraphicsView):
                 rect = QGraphicsRectItem(start_x, start_y, finish_x, finish_y)
                 self.scene().addItem(rect)
 
-                if self.mainwindow.mod == 'AI':
+                if self.mainwindow.mod == 'AI' and event.modifiers() != Qt.AltModifier:
 
-                    circ_rect = QGraphicsRectItem(QRectF(
-                        start_x + (finish_x * 0.15), start_y,
-                        finish_x - (finish_x * 0.3), finish_y
-                    ))
+                    if self.rotation not in [90, 270]:
 
-                    circ_rect.setPen(QPen(Qt.red, 2))
-                    self.scene().addItem(circ_rect)
+                        circ_rect = QGraphicsRectItem(QRectF(
+                            start_x + (finish_x * 0.15), start_y,
+                            finish_x - (finish_x * 0.3), finish_y
+                        ))
+
+                        circ_rect.setPen(QPen(Qt.red, 2))
+                        self.scene().addItem(circ_rect)
+
+                    else:
+
+                        circ_rect = QGraphicsRectItem(QRectF(
+                            start_x, start_y + (finish_y * 0.15),
+                            finish_x, finish_y - (finish_y * 0.3)
+                        ))
+
+                        circ_rect.setPen(QPen(Qt.red, 2))
+                        self.scene().addItem(circ_rect)
+
+                return
 
         super().mouseMoveEvent(event)
 
@@ -273,23 +295,58 @@ class TabWidget(QGraphicsView):
                 self.transform_func.scale(1.2, 1.2)
                 self.setTransform(self.transform_func)
 
+            elif self.mainwindow.mod in ["AXE", "AI"] and event.modifiers() == Qt.AltModifier:
+
+                if self.start == self.finish:
+
+                    self.start = QPoint()
+                    self.finish = QPoint()
+
+                    return
+
+                start_x = min(self.start.x(), self.finish.x())
+                start_y = min(self.start.y(), self.finish.y())
+                finish_x = abs(self.finish.x() - self.start.x())
+                finish_y = abs(self.finish.y() - self.start.y())
+
+                rect = QRectF(start_x, start_y, finish_x, finish_y)
+
+                for item in self.current_el:
+
+                    if item.object_name.split('_')[-1] != '1':
+                        pen = QPen()
+                        pen.setColor(QColor("#11ab22"))
+                        pen.setWidth(2)
+                        item.setPen(pen)
+
+                self.current_el.clear()
+
+                [item.set_current(True) for item in self.scene().items(rect) if type(item) in [SimpleRect, SimplePoint]]
+
+                [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
+
             elif self.mainwindow.mod == "AI":
 
                 if self.start == self.finish:
+
+                    self.start = QPoint()
+                    self.finish = QPoint()
 
                     return
 
                 try:
                     dots = self.scene().canvas.pins2json(self.points)
 
-                except NonePointError:
-                    self.mainwindow.log("Error: no points in this area")
+                except RuntimeWarning:
+
+                    self.mainwindow.log("Error: no points found")
                     [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
                     self.start = QPoint()
                     self.finish = QPoint()
                     return
 
                 except Exception:
+
                     self.mainwindow.log("Error: unknown error")
                     [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
                     self.start = QPoint()
@@ -329,9 +386,12 @@ class TabWidget(QGraphicsView):
 
             elif self.mainwindow.mod == "AXE":
 
-                name = self.mainwindow.TreeListWidget.currentItem().text(0)
+                name = self.mainwindow.TreeListWidget.currentItem().text(0).replace(" ✓", "")
 
                 if type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetItem and self.start != self.finish:
+
+                    [self.scene().removeItem(it) for it in self.items() if type(it) == SimpleRect and it.object_name == name]
+
                     rect = SimpleRect(self.start.x(), self.start.y(), self.finish.x(), self.finish.y(),
                                       object_name=name, mod=self.mainwindow.mod)
 
@@ -343,6 +403,9 @@ class TabWidget(QGraphicsView):
 
                     if type(self.itemAt(event.pos())) in [QGraphicsPixmapItem, GraphicsBlueprintItem] and \
                             type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetChild:
+
+                        [self.scene().removeItem(it) for it in self.items() if type(it) == SimplePoint and it.object_name == name]
+
                         size = self.sceneRect().width() / 200
                         self.scene().addItem(
                             SimplePoint((self.finish.x() - (size / 2), self.finish.y() - (size / 2), size, size),
@@ -374,6 +437,10 @@ class TabWidget(QGraphicsView):
                 self.setTransform(self.transform_func)
 
             else:
+
+                if self.items():
+
+                    [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
 
                 _event = QMouseEvent(event.type(), event.pos(), Qt.LeftButton, Qt.LeftButton, event.modifiers())
                 super().mouseReleaseEvent(_event)

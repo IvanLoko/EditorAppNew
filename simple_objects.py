@@ -21,6 +21,7 @@ class SimpleRect(QGraphicsRectItem):
         pen.setWidth(2)
         self.setPen(pen)
         self.setCursor(Qt.SizeAllCursor)
+        self.setZValue(1)
         self.rect_mod = mod
         self.dx, self.dy = 0, 0
         self.sl = None
@@ -46,8 +47,10 @@ class SimpleRect(QGraphicsRectItem):
             "bottom": [QRectF(self.boundingRect().x() + 5, self.boundingRect().y() + self.boundingRect().height() - 5, self.boundingRect().width() - 10, 5), Qt.SizeVerCursor],
         }
 
+        self.anchor_list = []
+
         for rect in self.anchors.keys():
-            self.anchor = AnchorRect(self, rect, self.anchors.get(rect))
+            self.anchor_list.append(AnchorRect(self, rect, self.anchors.get(rect)))
 
     def anchor_drag(self, anchor, pos):
 
@@ -129,7 +132,7 @@ class SimpleRect(QGraphicsRectItem):
         self.sl = SL((x, y), text=self.object_name, size=10)
         self.scene().addItem(self.sl)
 
-        if self.scene().parent().current_el != self:
+        if self not in self.scene().parent().current_el:
             pen = QPen()
             pen.setColor(QColor("#44ef55"))
             pen.setWidth(2)
@@ -140,27 +143,39 @@ class SimpleRect(QGraphicsRectItem):
 
         self.scene().removeItem(self.sl)
 
-        if self.scene().parent().current_el != self:
+        if self not in self.scene().parent().current_el:
             pen = QPen()
             pen.setColor(QColor("#11ab22"))
             pen.setWidth(2)
             self.setPen(pen)
 
-    def mousePressEvent(self, event):
+    def set_current(self, add=False):
 
-        if self.scene().parent().current_el and self.scene().parent().current_el.object_name.split('_')[-1] != '1':
+        if not add:
 
-            pen = QPen()
-            pen.setColor(QColor("#11ab22"))
-            pen.setWidth(2)
-            self.scene().parent().current_el.setPen(pen)
+            for item in self.scene().parent().current_el:
 
-        self.scene().parent().current_el = self
+                if item.object_name.split('_')[-1] != '1':
+                    pen = QPen()
+                    pen.setColor(QColor("#11ab22"))
+                    pen.setWidth(2)
+                    item.setPen(pen)
+
+            self.scene().parent().current_el.clear()
+
+        self.scene().parent().current_el.append(self)
 
         pen = QPen()
         pen.setColor(QColor("#44ef55"))
         pen.setWidth(2)
         self.setPen(pen)
+
+    def mousePressEvent(self, event):
+
+        if event.modifiers() == Qt.ControlModifier:
+            self.set_current(True)
+        else:
+            self.set_current()
 
         self.dx, self.dy = event.scenePos().x() - self.rect().x(), event.scenePos().y() - self.rect().y()
 
@@ -202,6 +217,7 @@ class SimplePoint(QGraphicsRectItem):
         self.setRect(geom[0], geom[1], geom[2], geom[3])
         self.object_name = object_name
         self.setCursor(Qt.SizeAllCursor)
+        self.setZValue(1)
         self.sl = None
 
         self.dx, self.dy = 0, 0
@@ -231,7 +247,7 @@ class SimplePoint(QGraphicsRectItem):
         if self.object_name.split('_')[-1] == '1':
             return
 
-        if self.scene().parent().current_el != self:
+        if self not in self.scene().parent().current_el:
             pen = QPen()
             pen.setColor(QColor("#44ef55"))
             pen.setWidth(2)
@@ -245,28 +261,40 @@ class SimplePoint(QGraphicsRectItem):
         if self.object_name.split('_')[-1] == '1':
             return
 
-        if self.scene().parent().current_el != self:
+        if self not in self.scene().parent().current_el:
             pen = QPen()
             pen.setColor(QColor("#11ab22"))
             pen.setWidth(2)
             self.setPen(pen)
 
-    def mousePressEvent(self, event):
+    def set_current(self, add=False):
 
-        if self.scene().parent().current_el and self.scene().parent().current_el.object_name.split('_')[-1] != '1':
+        if not add:
 
-            pen = QPen()
-            pen.setColor(QColor("#11ab22"))
-            pen.setWidth(2)
-            self.scene().parent().current_el.setPen(pen)
+            for item in self.scene().parent().current_el:
 
-        self.scene().parent().current_el = self
+                if item.object_name.split('_')[-1] != '1':
+                    pen = QPen()
+                    pen.setColor(QColor("#11ab22"))
+                    pen.setWidth(2)
+                    item.setPen(pen)
+
+            self.scene().parent().current_el.clear()
+
+        self.scene().parent().current_el.append(self)
 
         if self.object_name.split('_')[-1] != '1':
             pen = QPen()
             pen.setColor(QColor("#44ef55"))
             pen.setWidth(2)
             self.setPen(pen)
+
+    def mousePressEvent(self, event):
+
+        if event.modifiers() == Qt.ControlModifier:
+            self.set_current(True)
+        else:
+            self.set_current()
 
         self.dx, self.dy = event.scenePos().x() - self.rect().x(), event.scenePos().y() - self.rect().y()
 
@@ -289,6 +317,7 @@ class SL(QGraphicsSimpleTextItem):
         self.size = size
         self.setText(text)
         self.setPos(pos[0] - self.boundingRect().width() / 2, pos[1] - self.boundingRect().height() / 2)
+        self.setZValue(1)
         self.show()
 
     def paint(self, painter: QPainter, option: 'QStyleOptionGraphicsItem', widget: QWidget) -> None:
@@ -308,6 +337,7 @@ class AnchorRect(QGraphicsRectItem):
         self.setCursor(properties[1])
         self.setPen(QPen(Qt.gray, 0))
         self.setOpacity(0.01)
+        self.setZValue(1)
 
     def mousePressEvent(self, event):
         return

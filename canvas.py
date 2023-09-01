@@ -17,8 +17,18 @@ class Canvas:
         self.model = model
 
     @staticmethod
-    def read_image(path: str):
+    def read_image(path: str, rotation=0, flip=False, mirror=False):
         img = Image.open(path)
+
+        if rotation != 0:
+            img.rotate(90)
+
+        if flip:
+            img.transpose(Image.FLIP_TOP_BOTTOM)
+
+        if mirror:
+            img.transpose(Image.FLIP_LEFT_RIGHT)
+            
         return np.asarray(img)[:, :, ::-1]
 
     def get_index(self):
