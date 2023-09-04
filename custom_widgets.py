@@ -164,17 +164,23 @@ class TabWidget(QGraphicsView):
 
             for item in self.current_el:
 
+                self.scene().removeItem(item.sl)
+                self.scene().removeItem(item)
+
                 if type(item) == SimpleRect:
 
                     self.mainwindow.TreeListWidget.findItems(item.object_name, Qt.MatchExactly)[0].change_status(False)
 
                 else:
 
-                    l_item = self.mainwindow.TreeListWidget.findItems(item.object_name.split("_")[0], Qt.MatchExactly)[0]
-                    l_item.child(int(item.object_name.split("_")[-1]) - 1).change_status(False)
+                    try:
 
-                self.scene().removeItem(item.sl)
-                self.scene().removeItem(item)
+                        l_item = self.mainwindow.TreeListWidget.findItems(item.object_name.split("_")[0], Qt.MatchExactly)[0]
+                        l_item.child(int(item.object_name.split("_")[-1]) - 1).change_status(False)
+
+                    except AttributeError:
+
+                        continue
 
             self.current_el.clear()
 
@@ -289,6 +295,19 @@ class TabWidget(QGraphicsView):
                                     self.start.y(),
                                     self.finish.x(),
                                     self.finish.y()]).astype('int16')
+
+            if self.mainwindow.mod in ["AXE", "AI"] and self.start == self.finish and \
+                    type(self.itemAt(event.pos())) in [QGraphicsPixmapItem, GraphicsBlueprintItem]:
+
+                for item in self.current_el:
+
+                    if item.object_name.split('_')[-1] != '1':
+                        pen = QPen()
+                        pen.setColor(QColor("#11ab22"))
+                        pen.setWidth(2)
+                        item.setPen(pen)
+
+                self.current_el.clear()
 
             if self.mainwindow.mod == "ZOOM":
 
