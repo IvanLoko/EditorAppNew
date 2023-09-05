@@ -393,11 +393,12 @@ class TabWidget(QGraphicsView):
                 self.mainwindow.log(f"Placed element: {self.mainwindow.TreeListWidget.currentItem().text(0)}")
 
                 dialog = ConfDialog(pins=pins, view=self)
+                dialog.move(self.mapToGlobal(QPoint(self.pos().x(), self.pos().y())))
                 dialog.exec()
 
                 if dialog.status:
 
-                    self.mainwindow.next_item(len(dots))
+                    self.mainwindow.next_item(len(dialog.pins))
 
                 else:
 

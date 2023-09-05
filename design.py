@@ -602,6 +602,9 @@ class UI(QMainWindow):
                 last_item = self.TreeListWidget.currentItem().child(count)
                 self.TreeListWidget.setCurrentItem(last_item)
 
+                self.log("Current element was incompletely labeled, changing the mode...")
+                self.change_mode("AXE")
+
         elif self.mod == "AXE":
 
             if type(self.TreeListWidget.currentItem()) == TreeWidgetItem:
@@ -637,12 +640,16 @@ class UI(QMainWindow):
                     next_item = self.TreeListWidget.topLevelItem(self.TreeListWidget.currentIndex().row() + 1)
                     self.TreeListWidget.setCurrentItem(next_item)
 
+                    self.log("Current element is finished, changing the mode...")
+                    self.change_mode("AI")
+
 
 if __name__ == '__main__':
 
     multiprocessing.freeze_support()
 
     model = YOLO('data/best.pt', task='predict')
+    model.cfg = "ultralytics/cfg/default.yaml"
     model(np.zeros((256, 256, 3)), verbose=False)
 
     app = QApplication(sys.argv)

@@ -64,6 +64,15 @@
 	border: 1px solid #f1f1f1;
 }
 
+#ScreenshotButton {
+	color: #d1d1d1;
+	border: 1px solid #f1f1f1;
+}
+
+#ScreenshotButton::hover {
+	background-color: #7b7b7b;
+}
+
 #OkayButton {
 	color: #d1d1d1;
 	border-radius: 6px;
@@ -378,6 +387,21 @@
          </property>
          <item>
           <widget class="QPushButton" name="ScreenshotButton">
+           <property name="minimumSize">
+            <size>
+             <width>80</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>80</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Сохранить выделенную область в /screenshots&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
            <property name="text">
             <string>Screenshot</string>
            </property>

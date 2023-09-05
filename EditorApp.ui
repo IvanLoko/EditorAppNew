@@ -953,6 +953,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Загрузить проект&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="whatsThis">
                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load project&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
@@ -999,6 +1002,9 @@ QTreeView::item {
                     <width>40</width>
                     <height>40</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Перезаписать файл Points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -1060,6 +1066,15 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Сменить режим разметки на AI&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="toolTipDuration">
+                   <number>-1</number>
+                  </property>
+                  <property name="whatsThis">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1098,6 +1113,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Сменить режим разметки на ручной&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1135,6 +1153,9 @@ QTreeView::item {
                     <width>40</width>
                     <height>40</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Сменить режим разметки на стандартный&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -1199,6 +1220,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Повернуть изображение&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1233,6 +1257,9 @@ QTreeView::item {
                     <width>40</width>
                     <height>40</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Отразить изображение по вертикали&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -1269,6 +1296,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Отразить изображение по горизонтали&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1304,6 +1334,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Обрезать изображение&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1338,6 +1371,9 @@ QTreeView::item {
                     <width>40</width>
                     <height>40</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Приблизить изображение&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -1399,6 +1435,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Скрыть / Показать пины&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1433,6 +1472,9 @@ QTreeView::item {
                     <width>40</width>
                     <height>40</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Скрыть / Показать имена компонентов&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -1529,6 +1571,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Показать консоль&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1563,6 +1608,9 @@ QTreeView::item {
                     <width>40</width>
                     <height>40</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Меню настроек&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
                    <string/>
@@ -2198,6 +2246,9 @@ QTreeView::item {
                     <height>40</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Загрузить сборочный чертеж&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                   <property name="text">
                    <string>No Image</string>
                   </property>
@@ -2271,6 +2322,9 @@ QTreeView::item {
                        <width>20</width>
                        <height>20</height>
                       </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Скрыть / Показать сборочный чертеж&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="text">
                       <string/>
