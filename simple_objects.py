@@ -237,9 +237,9 @@ class SimplePoint(QGraphicsRectItem):
         """При наведении курсора мыши на объект, будет показано его имя"""
 
         x = self.mapRectToScene(self.rect()).x()
-        x += self.rect().width() / 2
+        x += self.rect().width()
         y = self.mapRectToScene(self.rect()).y()
-        y += self.rect().height() / 2
+        y -= self.rect().height()
         if self.isVisible():
             self.sl = SL((x, y), text=self.object_name, size=6)
             self.scene().addItem(self.sl)
@@ -316,7 +316,7 @@ class SL(QGraphicsSimpleTextItem):
         super().__init__()
         self.size = size
         self.setText(text)
-        self.setPos(pos[0] - self.boundingRect().width() / 2, pos[1] - self.boundingRect().height() / 2)
+        self.setPos(pos[0], pos[1])
         self.setZValue(1)
         self.show()
 
@@ -344,3 +344,24 @@ class AnchorRect(QGraphicsRectItem):
 
     def mouseMoveEvent(self, event):
         self.parentItem().anchor_drag(self, event.pos())
+
+class CropItem(QGraphicsPathItem):
+    def __init__(self, parent, start=None, finish=QPointF(0, 0)):
+        QGraphicsPathItem.__init__(self, parent)
+
+        self.extern_rect = parent.boundingRect()
+        self.intern_rect = QRectF(start.x(), start.y(), finish.x() - start.x(), finish.y() - start.y())
+        self.setBrush(QBrush(QColor(10, 0, 0, 120)))
+
+        pen = QPen()  # creates a default pen
+        pen.setBrush(Qt.white)
+
+        self.setPen(pen)
+        self.create_path()
+
+    def create_path(self):
+        self._path = QPainterPath()
+        self._path.addRect(self.extern_rect)
+        self._path.moveTo(self.intern_rect.topLeft())
+        self._path.addRect(self.intern_rect)
+        self.setPath(self._path)

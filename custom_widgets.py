@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-from simple_objects import SimpleRect, SimplePoint, AnchorRect
+from simple_objects import SimpleRect, SimplePoint, AnchorRect, CropItem
 from conf_dialog import ConfDialog
 
 import numpy as np
@@ -186,6 +186,10 @@ class TabWidget(QGraphicsView):
 
     def mousePressEvent(self, event):
 
+        if self.mainwindow.mod == 'STD' and event.button() == Qt.LeftButton:
+            self.start = self.mapToScene(event.pos())
+            self.finish = self.start
+
         self.mainwindow.cur_view = self
 
         if type(self.itemAt(event.pos())) in [QGraphicsPixmapItem, GraphicsBlueprintItem]:
@@ -221,9 +225,29 @@ class TabWidget(QGraphicsView):
                 super().mousePressEvent(_event)
                 event.accept()
 
+        elif event.buttons() == Qt.RightButton | Qt.LeftButton:
+            [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
+            [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, CropItem)]
+            return
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+
+        if event.buttons() == Qt.LeftButton and self.mainwindow.mod == 'STD':
+
+            if not self.start.isNull() and not self.finish.isNull():
+
+
+                self.finish = self.mapToScene(event.pos())
+                [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, CropItem)]
+
+                self.cropItem = CropItem(self.scene().pic, self.start, self.mapToScene(event.pos()))
+                self.cropItem.setBrush(QBrush(QColor(10, 0, 0, 80)))
+                pen = QPen()
+                pen.setColor(QColor(Qt.white))
+                pen.setStyle(Qt.DotLine)
+                self.cropItem.setPen(pen)
 
         if self.mainwindow.mod == "ZOOM":
 
@@ -261,7 +285,7 @@ class TabWidget(QGraphicsView):
                 rect = QGraphicsRectItem(start_x, start_y, finish_x, finish_y)
                 self.scene().addItem(rect)
 
-                if self.mainwindow.mod == 'AI' and event.modifiers() != Qt.AltModifier:
+                if self.mainwindow.mod in ['AI', 'AXE'] and event.modifiers() != Qt.AltModifier:
 
                     if self.rotation not in [90, 270]:
 
@@ -288,6 +312,10 @@ class TabWidget(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+
+        if event.button() == Qt.LeftButton and self.mainwindow.mod == 'STD':
+
+            self.scene().removeItem(self.cropItem)
 
         if event.button() == Qt.LeftButton:
 
