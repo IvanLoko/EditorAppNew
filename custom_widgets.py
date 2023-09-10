@@ -473,6 +473,7 @@ class TabWidget(QGraphicsView):
                                         object_name=name,
                                         visible_status=self.mainwindow.pins_status))
 
+                        [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
 
                         self.mainwindow.log(f"Placed point: {name}")
                         self.mainwindow.next_item()
