@@ -461,9 +461,10 @@ class TabWidget(QGraphicsView):
 
                         for it in self.scene().items():
                             if isinstance(it, SimplePoint):
-                                if int(it.object_name.split('_')[-1]) >= int(name.split('_')[-1]):
-                                    it.object_name = first_name + '_' + str(
-                                        int(it.object_name.split('_')[-1]) + 1)
+                                if it.object_name.split('_')[0] == first_name:
+                                    if int(it.object_name.split('_')[-1]) >= int(name.split('_')[-1]):
+                                        it.object_name = first_name + '_' + str(
+                                            int(it.object_name.split('_')[-1]) + 1)
 
                         [self.scene().removeItem(it) for it in self.items() if type(it) == SimplePoint \
                          and it.object_name == name]
