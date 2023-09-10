@@ -175,7 +175,8 @@ class TabWidget(QGraphicsView):
 
                     try:
 
-                        l_item = self.mainwindow.TreeListWidget.findItems(item.object_name.split("_")[0], Qt.MatchExactly)[0]
+                        l_item = \
+                            self.mainwindow.TreeListWidget.findItems(item.object_name.split("_")[0], Qt.MatchExactly)[0]
                         l_item.child(int(item.object_name.split("_")[-1]) - 1).change_status(False)
 
                     except AttributeError:
@@ -237,8 +238,6 @@ class TabWidget(QGraphicsView):
         if event.buttons() == Qt.LeftButton and self.mainwindow.mod == 'STD':
 
             if not self.start.isNull() and not self.finish.isNull():
-
-
                 self.finish = self.mapToScene(event.pos())
                 [self.scene().removeItem(item) for item in self.scene().items() if isinstance(item, CropItem)]
 
@@ -252,20 +251,20 @@ class TabWidget(QGraphicsView):
         if self.mainwindow.mod == "ZOOM":
 
             if self.items():
-
                 [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
 
             center = self.mapToScene(event.pos())
 
             kx, ky = self.sceneRect().width() / 10, self.sceneRect().height() / 10
 
-            rect = QGraphicsRectItem(center.x() - kx/2, center.y() - ky/2, kx, ky)
+            rect = QGraphicsRectItem(center.x() - kx / 2, center.y() - ky / 2, kx, ky)
             self.scene().addItem(rect)
             return
 
         elif self.mainwindow.mod in ["AXE", "CROP", "AI"]:
 
-            if self.mainwindow.mod in ["AXE", "AI"] and type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetChild:
+            if self.mainwindow.mod in ["AXE", "AI"] and type(
+                    self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetChild:
                 super().mouseMoveEvent(event)
                 return
 
@@ -274,7 +273,6 @@ class TabWidget(QGraphicsView):
                 self.finish = self.mapToScene(event.pos())
 
                 if self.items():
-
                     [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
 
                 start_x = min(self.start.x(), self.finish.x())
@@ -314,7 +312,6 @@ class TabWidget(QGraphicsView):
     def mouseReleaseEvent(self, event):
 
         if event.button() == Qt.LeftButton and self.mainwindow.mod == 'STD':
-
             self.scene().removeItem(self.cropItem)
 
         if event.button() == Qt.LeftButton:
@@ -345,7 +342,6 @@ class TabWidget(QGraphicsView):
             elif self.mainwindow.mod in ["AXE", "AI"] and event.modifiers() == Qt.AltModifier:
 
                 if self.start == self.finish:
-
                     self.start = QPoint()
                     self.finish = QPoint()
 
@@ -375,7 +371,6 @@ class TabWidget(QGraphicsView):
             elif self.mainwindow.mod == "AI":
 
                 if self.start == self.finish:
-
                     self.start = QPoint()
                     self.finish = QPoint()
 
@@ -404,7 +399,7 @@ class TabWidget(QGraphicsView):
                 name = self.mainwindow.TreeListWidget.currentItem().text(0)
 
                 rect = SimpleRect(self.start.x(), self.start.y(), self.finish.x(), self.finish.y(),
-                                    object_name=name, mod=self.mainwindow.mod)
+                                  object_name=name, mod=self.mainwindow.mod)
 
                 self.scene().addItem(rect)
 
@@ -438,7 +433,8 @@ class TabWidget(QGraphicsView):
 
                 if type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetItem and self.start != self.finish:
 
-                    [self.scene().removeItem(it) for it in self.items() if type(it) == SimpleRect and it.object_name == name]
+                    [self.scene().removeItem(it) for it in self.items() if
+                     type(it) == SimpleRect and it.object_name == name]
 
                     rect = SimpleRect(self.start.x(), self.start.y(), self.finish.x(), self.finish.y(),
                                       object_name=name, mod=self.mainwindow.mod)
@@ -452,18 +448,36 @@ class TabWidget(QGraphicsView):
                     if type(self.itemAt(event.pos())) in [QGraphicsPixmapItem, GraphicsBlueprintItem] and \
                             type(self.mainwindow.TreeListWidget.currentItem()) == TreeWidgetChild:
 
-                        [self.scene().removeItem(it) for it in self.items() if type(it) == SimplePoint and it.object_name == name]
+                        first_name = name.split('_')[0]
 
-                        size = self.sceneRect().width() / 200
+                        for item in self.scene().items():
+                            if isinstance(item, SimplePoint):
+                                if first_name in item.object_name:
+                                    width, height = item.rect().width(), item.rect().height()
+                                    break
+
+                        if 'width' not in locals() and 'height' not in locals():
+                            width, height = [self.sceneRect().width() / 200] * 2
+
+                        for it in self.scene().items():
+                            if isinstance(it, SimplePoint):
+                                if int(it.object_name.split('_')[-1]) >= int(name.split('_')[-1]):
+                                    it.object_name = first_name + '_' + str(
+                                        int(it.object_name.split('_')[-1]) + 1)
+
+                        [self.scene().removeItem(it) for it in self.items() if type(it) == SimplePoint \
+                         and it.object_name == name]
+
                         self.scene().addItem(
-                            SimplePoint((self.finish.x() - (size / 2), self.finish.y() - (size / 2), size, size),
+                            SimplePoint((self.finish.x() - (width / 2), self.finish.y() - (height / 2), width, height),
                                         object_name=name,
                                         visible_status=self.mainwindow.pins_status))
+
 
                         self.mainwindow.log(f"Placed point: {name}")
                         self.mainwindow.next_item()
 
-                [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
+
 
             elif self.mainwindow.mod == 'CROP':
 
@@ -487,7 +501,6 @@ class TabWidget(QGraphicsView):
             else:
 
                 if self.items():
-
                     [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
 
                 _event = QMouseEvent(event.type(), event.pos(), Qt.LeftButton, Qt.LeftButton, event.modifiers())

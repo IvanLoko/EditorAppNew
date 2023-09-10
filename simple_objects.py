@@ -178,6 +178,7 @@ class SimpleRect(QGraphicsRectItem):
             self.set_current()
 
         self.dx, self.dy = event.scenePos().x() - self.rect().x(), event.scenePos().y() - self.rect().y()
+        event.accept()
 
     def mouseMoveEvent(self, event):
 
@@ -204,6 +205,7 @@ class SimpleRect(QGraphicsRectItem):
 
         for el in self.childItems():
             el.setRect(self.anchors[el.location][0])
+        event.accept()
 
 
 class SimplePoint(QGraphicsRectItem):
@@ -297,6 +299,7 @@ class SimplePoint(QGraphicsRectItem):
             self.set_current()
 
         self.dx, self.dy = event.scenePos().x() - self.rect().x(), event.scenePos().y() - self.rect().y()
+        event.accept()
 
     def mouseMoveEvent(self, event):
 
@@ -307,6 +310,7 @@ class SimplePoint(QGraphicsRectItem):
             self.rect().x() + self.rect().width() / 2 - item.boundingRect().width() / 2,
             self.rect().y() + self.rect().height() / 2 - item.boundingRect().height() / 2
         ) for item in self.scene().items() if isinstance(item, SL)]
+        event.accept()
 
 
 class SL(QGraphicsSimpleTextItem):
