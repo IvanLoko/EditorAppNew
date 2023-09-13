@@ -1,11 +1,9 @@
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-from PyQt5.QtGui import *
 
 from errors import NonePointError
 from simple_objects import SimplePoint
-import glob
 
 
 class ConfDialog(QDialog):

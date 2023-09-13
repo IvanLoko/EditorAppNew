@@ -650,7 +650,7 @@ if __name__ == '__main__':
 
     model = YOLO('data/best.pt', task='predict')
     model.cfg = "ultralytics/cfg/default.yaml"
-    model(np.zeros((256, 256, 3)), verbose=False)
+    # model(np.zeros((256, 256, 3)), verbose=False)
 
     app = QApplication(sys.argv)
 
