@@ -349,6 +349,7 @@ class AnchorRect(QGraphicsRectItem):
     def mouseMoveEvent(self, event):
         self.parentItem().anchor_drag(self, event.pos())
 
+
 class CropItem(QGraphicsPathItem):
     def __init__(self, parent, start=None, finish=QPointF(0, 0)):
         QGraphicsPathItem.__init__(self, parent)
