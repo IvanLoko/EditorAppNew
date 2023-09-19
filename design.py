@@ -35,6 +35,7 @@ class UI(QMainWindow):
         self.pins_status = True
         self.cur_view = None
         self.bp_view = None
+        self.modes_locked = False
         self.normalized_geometry = self.geometry()
         self.grip_position = QPoint(0, 0)
 
@@ -436,8 +437,10 @@ class UI(QMainWindow):
 
     def change_mode(self, mode: str):
 
-        self.mod = mode
-        self.log(f"Mouse mode changed -> {self.mod}")
+        if not self.modes_locked:
+
+            self.mod = mode
+            self.log(f"Mouse mode changed -> {self.mod}")
 
     def pins_status_change(self):
 

@@ -120,6 +120,161 @@ class GraphicsBlueprintItem(QGraphicsPixmapItem):
         self.path = path
         self.pixmap = QPixmap(path)
         self.setPixmap(self.pixmap)
+        self.adjustable = False
+        self.dx, self.dy = 0, 0
+        self.anchors = {}
+        self.update_anchors()
+        self.anchor_list = []
+        self.last_mod = None
+
+        for rect in self.anchors.keys():
+
+            self.anchor_list.append(BlueprintAnchor(self, rect, self.anchors.get(rect)))
+            pass
+
+    def setAdjustable(self, status: bool):
+
+        self.adjustable = status
+
+        if status:
+
+            self.setZValue(5)
+            self.setCursor(Qt.SizeAllCursor)
+            self.last_mod = self.scene().parent().mainwindow.mod
+            self.scene().parent().mainwindow.mod = None
+
+            for rect in self.anchor_list:
+
+                rect.setVisible(True)
+
+            self.setAcceptTouchEvents(True)
+
+        else:
+
+            self.setZValue(0)
+            self.setCursor(Qt.CrossCursor)
+            self.scene().parent().mainwindow.mod = self.last_mod
+
+            for rect in self.anchor_list:
+
+                rect.setVisible(False)
+
+            self.setAcceptTouchEvents(True)
+
+    def mousePressEvent(self, event):
+
+        if self.adjustable:
+
+            self.dx, self.dy = event.scenePos().x() - self.x(), event.scenePos().y() - self.y()
+
+    def mouseMoveEvent(self, event):
+
+        if self.adjustable:
+
+            self.setX(event.scenePos().x() - self.dx)
+            self.setY(event.scenePos().y() - self.dy)
+
+    def mouseReleaseEvent(self, event):
+
+        return
+
+    def update_anchors(self):
+
+        self.anchors = {
+            "topLeft": [QRectF(0, 0, 20, 20), Qt.SizeFDiagCursor],
+            "topRight": [QRectF(self.pixmap.width() - 20, 0, 20, 20), Qt.SizeBDiagCursor],
+            "bottomRight": [QRectF(self.pixmap.width() - 20, self.pixmap.height() - 20, 20, 20), Qt.SizeFDiagCursor],
+            "bottomLeft": [QRectF(0, self.pixmap.height() - 20, 20, 20), Qt.SizeBDiagCursor],
+            "left": [QRectF(0, 20, 20, self.pixmap.height() - 40), Qt.SizeHorCursor],
+            "top": [QRectF(20, 0, self.pixmap.width() - 40, 20), Qt.SizeVerCursor],
+            "right": [QRectF(0 + self.pixmap.width() - 20, 20, 20, self.pixmap.height() - 40), Qt.SizeHorCursor],
+            "bottom": [QRectF(20, self.pixmap.height() - 20, self.pixmap.width() - 40, 20), Qt.SizeVerCursor],
+        }
+
+    def anchor_drag(self, anchor, pos):
+
+        x, y = int(pos.x()), int(pos.y())
+        pix_x, pix_y, pix_width, pix_height = int(self.scenePos().x()), int(self.scenePos().y()), self.pixmap.width(), self.pixmap.height()
+
+        if anchor.location == "left":
+            self.pixmap = QPixmap(self.path).scaled(QSize(pix_x - x + pix_width, pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.setX(x)
+            self.flip_checker(side1="left")
+        if anchor.location == "top":
+            self.pixmap = QPixmap(self.path).scaled(QSize(pix_width, pix_y - y + pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.setY(y)
+            self.flip_checker(side2="top")
+        if anchor.location == "right":
+            self.pixmap = QPixmap(self.path).scaled(QSize(x - (pix_x + pix_width) + pix_width, pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.flip_checker(side1="right")
+        if anchor.location == "bottom":
+            self.pixmap = QPixmap(self.path).scaled(QSize(pix_width, y - (pix_y + pix_height) + pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.flip_checker(side2="bottom")
+        if anchor.location == "topLeft":
+            self.pixmap = QPixmap(self.path).scaled(QSize(pix_x - x + pix_width, pix_y - y + pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.setX(x)
+            self.setY(y)
+            self.flip_checker("left", "top")
+        if anchor.location == "topRight":
+            self.pixmap = QPixmap(self.path).scaled(QSize(x - (pix_x + pix_width) + pix_width, pix_y - y + pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.setY(y)
+            self.flip_checker("right", "top")
+        if anchor.location == "bottomRight":
+            self.pixmap = QPixmap(self.path).scaled(QSize(x - (pix_x + pix_width) + pix_width, y - (pix_y + pix_height) + pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.flip_checker("right", "bottom")
+        if anchor.location == "bottomLeft":
+            self.pixmap = QPixmap(self.path).scaled(QSize(pix_x - x + pix_width, y - (pix_y + pix_height) + pix_height), Qt.IgnoreAspectRatio)
+            self.setPixmap(self.pixmap)
+            self.setX(x)
+            self.flip_checker("left", "bottom")
+
+        self.update_anchors()
+
+        for el in self.childItems():
+            el.setRect(self.anchors[el.location][0])
+
+    def flip_checker(self, side1=None, side2=None):
+
+        if self.pixmap.width() < 100:
+            self.pixmap = QPixmap(self.path).scaled(100, self.pixmap.height())
+            self.setPixmap(self.pixmap)
+
+        if self.pixmap.height() < 100:
+            self.pixmap = QPixmap(self.path).scaled(self.pixmap.width(), 100)
+            self.setPixmap(self.pixmap)
+
+        if self.pixmap.width() == 0 and self.pixmap.height() == 0:
+            self.pixmap = QPixmap(self.path).scaled(100, 100)
+
+
+class BlueprintAnchor(QGraphicsRectItem):
+
+    def __init__(self, parent, location, properties):
+
+        super().__init__(parent=parent)
+
+        self.location = location
+
+        self.setRect(properties[0])
+        self.setCursor(properties[1])
+        self.setOpacity(1)
+        self.setZValue(6)
+        self.setVisible(False)
+
+        self.setBrush(QBrush(QColor("black")))
+
+    def mousePressEvent(self, event):
+        return
+
+    def mouseMoveEvent(self, event):
+        self.parentItem().anchor_drag(self, event.scenePos())
 
 
 class TabWidget(QGraphicsView):
@@ -185,7 +340,31 @@ class TabWidget(QGraphicsView):
 
             self.current_el.clear()
 
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_T and self.blueprint:
+
+            self.blueprint.setAdjustable(True)
+
+        if event.key() == Qt.Key_Escape or event.key() == Qt.Key_Return:
+
+            self.start, self.finish = QPoint(), QPoint()
+
+            if self.items():
+                [self.scene().removeItem(it) for it in self.items() if type(it) == QGraphicsRectItem]
+
+            if self.blueprint:
+
+                self.blueprint.setAdjustable(False)
+
     def mousePressEvent(self, event):
+
+        if self.blueprint and self.blueprint.adjustable and self.itemAt(event.pos()) in [GraphicsBlueprintItem, BlueprintAnchor]:
+
+            super().mousePressEvent(event)
+            return
+
+        elif self.blueprint and self.blueprint.adjustable and type(self.itemAt(event.pos())) not in [GraphicsBlueprintItem, BlueprintAnchor]:
+
+            self.blueprint.setAdjustable(False)
 
         if self.mainwindow.mod == 'STD' and event.button() == Qt.LeftButton:
             self.start = self.mapToScene(event.pos())
@@ -220,6 +399,9 @@ class TabWidget(QGraphicsView):
                     self.finish = self.start
 
             elif event.button() == Qt.RightButton:
+
+                if self.blueprint:
+                    self.blueprint.setVisible(False)
 
                 _event = QMouseEvent(event.type(), event.pos(), Qt.LeftButton, Qt.LeftButton, event.modifiers())
                 self.setDragMode(QGraphicsView.ScrollHandDrag)
@@ -479,8 +661,6 @@ class TabWidget(QGraphicsView):
                         self.mainwindow.log(f"Placed point: {name}")
                         self.mainwindow.next_item()
 
-
-
             elif self.mainwindow.mod == 'CROP':
 
                 self.fitInView(min(self.start.x(), self.finish.x()),
@@ -509,6 +689,8 @@ class TabWidget(QGraphicsView):
                 super().mouseReleaseEvent(_event)
                 event.accept()
                 self.setDragMode(QGraphicsView.NoDrag)
+                if self.blueprint:
+                    self.blueprint.setVisible(True)
 
         self.start = QPoint()
         self.finish = QPoint()
