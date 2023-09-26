@@ -94,6 +94,7 @@ class ELTypeLabel(QLabel):
 
 class GraphicsScene(QGraphicsScene):
     """Интерактивная область для разметки и работы с элементами на отдельном фото ОД"""
+
     itemClicked = pyqtSignal(QGraphicsItem)
     itemMoved = pyqtSignal(dict)
 
@@ -356,6 +357,7 @@ class TabWidget(QGraphicsView):
                 self.blueprint.setAdjustable(False)
 
     def mousePressEvent(self, event):
+
 
         if self.blueprint and self.blueprint.adjustable and self.itemAt(event.pos()) in [GraphicsBlueprintItem, BlueprintAnchor]:
 

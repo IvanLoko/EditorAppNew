@@ -81,7 +81,8 @@ class UI(QMainWindow):
         self.MOVEButton.clicked.connect(lambda: self.change_mode("STD"))
         self.ZoomButton.clicked.connect(lambda: self.change_mode("ZOOM"))
         self.CropButton.clicked.connect(lambda: self.change_mode("CROP"))
-        self.LogButton.clicked.connect(lambda: self.GraphicsLoggerFrame.setHidden(not self.GraphicsLoggerFrame.isHidden()))
+        self.LogButton.clicked.connect(
+            lambda: self.GraphicsLoggerFrame.setHidden(not self.GraphicsLoggerFrame.isHidden()))
         self.LoadButton.clicked.connect(self.load_project)
         self.SaveButton.clicked.connect(self.save_project)
         self.PinsButton.clicked.connect(self.pins_status_change)
@@ -147,7 +148,6 @@ class UI(QMainWindow):
                     dirlist_points, _ = QFileDialog.getOpenFileName(None, "Выбрать папку",
                                                                     self.dirlist + '/Контрольные точки/')
                     if dirlist_points:
-
                         with open(dirlist_points, 'r') as ff:
                             self.dict = json.loads(ff.read(), strict=False)
 
@@ -303,8 +303,7 @@ class UI(QMainWindow):
 
                 if isinstance(element, SimpleRect):
                     if element.object_name in self_dict['Elements']:
-                        self_dict['Elements'][element.object_name] \
-                            ['Views'][str(view.scene().canvas.index)] = \
+                        self_dict['Elements'][element.object_name]['Views'][str(view.scene().canvas.index)] = \
                             [{'L': int(element.rect().topLeft().x()),
                               'T': int(element.rect().topLeft().y()),
                               'R': int(element.rect().bottomRight().x()),
@@ -313,8 +312,7 @@ class UI(QMainWindow):
 
                 if isinstance(element, SimplePoint):
                     if element.object_name in self_dict['Dots']:
-                        self_dict['Dots'][element.object_name] \
-                            ['Views'][str(view.scene().canvas.index)] = \
+                        self_dict['Dots'][element.object_name]['Views'][str(view.scene().canvas.index)] = \
                             {'L': int(element.rect().topLeft().x()),
                              'T': int(element.rect().topLeft().y()),
                              'R': int(element.rect().bottomRight().x()),
@@ -333,8 +331,8 @@ class UI(QMainWindow):
         bias = ImageStat.Stat(thumb).mean[:3]
         bias = [b - sum(bias) / 3 for b in bias]
         for pixel in thumb.getdata():
-            mu = sum(pixel)/3
-            SSE += sum((pixel[i] - mu - bias[i])*(pixel[i] - mu - bias[i]) for i in [0, 1, 2])
+            mu = sum(pixel) / 3
+            SSE += sum((pixel[i] - mu - bias[i]) * (pixel[i] - mu - bias[i]) for i in [0, 1, 2])
         MSE = float(SSE) / (40 * 40)
         if MSE <= 22:
             # Grayscale
@@ -364,7 +362,8 @@ class UI(QMainWindow):
             taskbar_height = monitor_info.get("Monitor")[3] - monitor_info.get("Work")[3]
 
             geom.setHeight(app.screenAt(QPoint(self.pos().x() + int(self.width() / 2),
-                                        self.pos().y() + int(self.height() / 2))).geometry().height() - taskbar_height)
+                                               self.pos().y() + int(
+                                                   self.height() / 2))).geometry().height() - taskbar_height)
 
             # Animate resize
             self.animation.setDuration(75)
@@ -417,14 +416,12 @@ class UI(QMainWindow):
         """ Get grip position if not maximized """
 
         if not self.MaximizeButton.isHidden():
-
             self.grip_position = event.pos()
 
     def move_window(self, event):
         """ Move grip for MainWindow if not maximized """
 
         if not self.MaximizeButton.isHidden():
-
             self.move(
                 self.pos().x() + event.pos().x() - self.grip_position.x(),
                 event.pos().y() + self.pos().y() - self.grip_position.y()
@@ -432,7 +429,7 @@ class UI(QMainWindow):
 
     def log(self, text: str):
         """ Append text in logger """
-        
+
         self.GraphicsLogger.appendPlainText(f"<{str(datetime.now().time()).split('.')[0]}> " + text)
 
     def change_mode(self, mode: str):
@@ -447,7 +444,6 @@ class UI(QMainWindow):
         self.pins_status = not self.pins_status
 
         for view in (self.GraphicsTabWidget.findChildren(TabWidget) + self.BlueprintTabWidget.findChildren(TabWidget)):
-
             [item.setVisible(self.pins_status) for item in view.scene().items() if type(item) == SimplePoint]
 
         self.log(f"Points visibility set to {self.pins_status}")
@@ -470,7 +466,6 @@ class UI(QMainWindow):
     def reflect_y(self):
 
         if self.cur_view:
-
             self.cur_view.transform_func.scale(-1, 1)
             self.cur_view.setTransform(self.cur_view.transform_func)
             self.cur_view.mirrored = True
@@ -483,7 +478,6 @@ class UI(QMainWindow):
     def reflect_x(self):
 
         if self.cur_view:
-
             self.cur_view.transform_func.scale(1, -1)
             self.cur_view.setTransform(self.cur_view.transform_func)
             self.cur_view.flipped = True
@@ -506,17 +500,16 @@ class UI(QMainWindow):
             self.OpacityBox.setValue(100)
 
         if self.bp_view.blueprint:
-
             self.bp_view.blueprint.setOpacity(self.OpacityBox.value() / 100)
 
     def bp_load(self):
 
-        file_path = QFileDialog.getOpenFileName(None, "Выберите изображение", '', "Images (*.png *.jpg)")[0].replace('/', '\\')
+        file_path = QFileDialog.getOpenFileName(None, "Выберите изображение", '', "Images (*.png *.jpg)")[0].replace(
+            '/', '\\')
 
         if file_path:
 
             if self.bp_view.blueprint:
-
                 self.bp_view.scene().removeItem(self.bp_view.blueprint)
 
             self.bp_view.blueprint = GraphicsBlueprintItem(file_path)
@@ -528,7 +521,6 @@ class UI(QMainWindow):
     def bp_visible(self):
 
         if not self.bp_view.blueprint:
-
             return
 
         if self.bp_view.blueprint.isVisible():
@@ -653,7 +645,7 @@ if __name__ == '__main__':
 
     model = YOLO('data/best.pt', task='predict')
     model.cfg = "ultralytics/cfg/default.yaml"
-    # model(np.zeros((256, 256, 3)), verbose=False)
+    model(np.zeros((256, 256, 3)), verbose=False)
 
     app = QApplication(sys.argv)
 
